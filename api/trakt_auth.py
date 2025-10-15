@@ -185,4 +185,7 @@ class TraktAuth:
             return response.json() if response.content else {}
         except requests.RequestException as e:
             logger.error(f"API request failed: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                logger.error(f"Response status: {e.response.status_code}")
+                logger.error(f"Response text: {e.response.text}")
             return None

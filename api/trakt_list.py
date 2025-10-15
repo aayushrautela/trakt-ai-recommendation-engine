@@ -89,8 +89,15 @@ class TraktListManager:
         """Clear all items from a list"""
         endpoint = f'/users/{username}/lists/{list_id}/items'
         
+        logger.info(f"Clearing list {list_id} for {username}")
         result = self.trakt_auth.make_authenticated_request(username, endpoint, 'DELETE')
-        return result is not None
+        
+        if result is not None:
+            logger.info(f"Successfully cleared list {list_id}")
+            return True
+        else:
+            logger.warning(f"Failed to clear list {list_id} - continuing anyway")
+            return True  # Continue even if clear fails
     
     def _add_movies_to_list(self, username: str, list_id: str, movies: List[Dict]) -> bool:
         """Add movies to a list"""
@@ -114,14 +121,25 @@ class TraktListManager:
         logger.info(f"Sending {len(movies_data['movies'])} movies to Trakt API")
         logger.info(f"Sample movie data: {movies_data['movies'][:2] if movies_data['movies'] else 'No movies'}")
         
-        result = self.trakt_auth.make_authenticated_request(username, endpoint, 'POST', movies_data)
+        # Try the request with retry logic for rate limiting
+        max_retries = 3
+        for attempt in range(max_retries):
+            result = self.trakt_auth.make_authenticated_request(username, endpoint, 'POST', movies_data)
+            
+            if result:
+                logger.info(f"Trakt API response: {result}")
+                return True
+            else:
+                if attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 2  # 2, 4, 6 seconds
+                    logger.warning(f"Trakt API failed, retrying in {wait_time} seconds (attempt {attempt + 1}/{max_retries})")
+                    import time
+                    time.sleep(wait_time)
+                else:
+                    logger.error("Trakt API returned no result after all retries")
+                    return False
         
-        if result:
-            logger.info(f"Trakt API response: {result}")
-            return True
-        else:
-            logger.error("Trakt API returned no result")
-            return False
+        return False
     
     def store_user_config(self, username: str, config: Dict) -> bool:
         """Store user configuration in Redis for nightly updates"""
