@@ -105,7 +105,7 @@ def generate_list():
                 "error": f"No watch history found for the selected time period ({time_period}). Please watch some movies first!"
             }), 400
         
-        # Generate AI recommendations with retry logic to get 20 movies
+        # Generate AI recommendations with aggressive retry logic to get 20 movies
         all_enriched_movies = []
         max_retries = 3
         current_history = history.copy()  # Start with original history
@@ -114,7 +114,7 @@ def generate_list():
         for attempt in range(max_retries):
             print(f"Gemini attempt {attempt + 1}/{max_retries}")
             
-            # Generate AI recommendations
+            # Generate AI recommendations (now asks for 50 movies)
             recommendations = recommendation_engine.analyze_watch_history(
                 current_history, time_period, selected_genres
             )
@@ -152,8 +152,8 @@ def generate_list():
                 print(f"Need {20 - len(all_enriched_movies)} more movies")
                 
                 if attempt < max_retries - 1:
-                    # Add the new movies to history so Gemini won't suggest them again
-                    for movie in unique_new_movies:
+                    # Add ALL movies (both used and new) to history so Gemini won't suggest them again
+                    for movie in new_enriched_movies:
                         fake_history_item = {
                             'movie': {
                                 'title': movie.get('title', ''),
@@ -164,7 +164,7 @@ def generate_list():
                         }
                         current_history.append(fake_history_item)
                     
-                    print(f"Added {len(unique_new_movies)} movies to history for next attempt")
+                    print(f"Added {len(new_enriched_movies)} movies to history for next attempt")
                 else:
                     print(f"Could only find {len(all_enriched_movies)} movies after {max_retries} attempts")
         

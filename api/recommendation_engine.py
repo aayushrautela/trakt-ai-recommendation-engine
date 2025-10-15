@@ -80,14 +80,14 @@ class RecommendationEngine:
             genre_constraint = f"\nIMPORTANT: Only suggest movies from these genres: {', '.join(selected_genres)}"
         
         prompt = f"""
-You are a movie recommendation expert. Based on the user's recent watch history, provide 30 movie recommendations.
+You are a movie recommendation expert. Based on the user's recent watch history, provide 50 movie recommendations.
 
 User's watch history ({time_period}):
 {history_summary}
 
 Instructions:
 1. Analyze their viewing patterns and preferences
-2. Suggest 30 movies total with the following mix:
+2. Suggest 50 movies total with the following mix:
    - 70% similar to what they've watched (same genres, themes, directors, or similar appeal)
    - 30% slightly different to help them discover new content (different but complementary genres or styles)
 3. Focus on well-known, popular movies that are likely to be in movie databases
