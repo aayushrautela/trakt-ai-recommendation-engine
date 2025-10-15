@@ -1,8 +1,12 @@
 import os
+import sys
 import json
 import logging
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify
 from dotenv import load_dotenv
+
+# Add the api directory to the python path for Vercel
+sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 
 # Import our modules - use absolute imports for Vercel compatibility
 from trakt_auth import TraktAuth
