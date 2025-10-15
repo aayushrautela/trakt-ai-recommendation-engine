@@ -123,6 +123,12 @@ class TraktListManager:
                 }
                 movies_data['movies'].append(movie_item)
             
+            # Debug: Show sample of what we're sending
+            print(f"Sending {len(movies_data['movies'])} movies to Trakt")
+            if movies_data['movies']:
+                sample_movie = movies_data['movies'][0]
+                print(f"Sample movie data: {sample_movie}")
+            
             # If there are items to remove, do it first
             if movies_to_remove:
                 remove_data = {'movies': movies_to_remove}
@@ -139,8 +145,21 @@ class TraktListManager:
             add_result = self.trakt_auth.make_authenticated_request(username, add_endpoint, 'POST', movies_data)
             
             if add_result:
-                print(f"Replaced list with {len(movies)} movies")
-                return True
+                # Check the actual response to see how many movies were added
+                added_count = add_result.get('added', {}).get('movies', 0)
+                existing_count = add_result.get('existing', {}).get('movies', 0)
+                not_found_count = len(add_result.get('not_found', {}).get('movies', []))
+                total_in_list = add_result.get('list', {}).get('item_count', 0)
+                
+                print(f"Added {added_count} new movies, {existing_count} already existed, {not_found_count} not found")
+                print(f"Total movies in list: {total_in_list}")
+                
+                # Consider it successful if we added at least some movies
+                if added_count > 0 or existing_count > 0:
+                    return True
+                else:
+                    print(f"ERROR: No movies were successfully added to the list", file=sys.stderr)
+                    return False
             else:
                 print(f"ERROR: Failed to add new movies", file=sys.stderr)
                 return False
