@@ -3,8 +3,8 @@ import json
 import redis
 import logging
 from typing import List, Dict, Optional
-from .trakt_auth import TraktAuth
-from .tmdb_client import TMDBClient
+from trakt_auth import TraktAuth
+from tmdb_client import TMDBClient
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +12,7 @@ class TraktListManager:
     def __init__(self):
         self.trakt_auth = TraktAuth()
         self.tmdb_client = TMDBClient()
+        self.namespace = os.getenv('REDIS_NAMESPACE', 'trakt_ai_gen')
         
         # Redis connection
         redis_url = os.getenv('REDIS_URL')
@@ -115,7 +116,7 @@ class TraktListManager:
     def store_user_config(self, username: str, config: Dict) -> bool:
         """Store user configuration in Redis for nightly updates"""
         try:
-            config_key = f'user_config:{username}'
+            config_key = f'{self.namespace}:user_config:{username}'
             self.redis_client.setex(config_key, 86400 * 30, json.dumps(config))  # 30 days expiry
             logger.info(f"Stored config for {username}")
             return True
@@ -126,7 +127,7 @@ class TraktListManager:
     def get_user_config(self, username: str) -> Optional[Dict]:
         """Get user configuration from Redis"""
         try:
-            config_key = f'user_config:{username}'
+            config_key = f'{self.namespace}:user_config:{username}'
             config_data = self.redis_client.get(config_key)
             if config_data:
                 return json.loads(config_data)
@@ -138,10 +139,10 @@ class TraktListManager:
         """Get all user configurations for nightly updates"""
         try:
             configs = {}
-            pattern = 'user_config:*'
+            pattern = f'{self.namespace}:user_config:*'
             
             for key in self.redis_client.scan_iter(match=pattern):
-                username = key.replace('user_config:', '')
+                username = key.replace(f'{self.namespace}:user_config:', '')
                 config_data = self.redis_client.get(key)
                 if config_data:
                     configs[username] = json.loads(config_data)
@@ -154,7 +155,7 @@ class TraktListManager:
     def delete_user_config(self, username: str) -> bool:
         """Delete user configuration"""
         try:
-            config_key = f'user_config:{username}'
+            config_key = f'{self.namespace}:user_config:{username}'
             self.redis_client.delete(config_key)
             logger.info(f"Deleted config for {username}")
             return True

@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
-from .trakt_auth import TraktAuth
+from trakt_auth import TraktAuth
 
 logger = logging.getLogger(__name__)
 

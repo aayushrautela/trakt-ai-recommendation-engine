@@ -2,10 +2,10 @@ import os
 import json
 import logging
 from datetime import datetime
-from .trakt_list import TraktListManager
-from .history_fetcher import HistoryFetcher
-from .recommendation_engine import RecommendationEngine
-from .tmdb_client import TMDBClient
+from trakt_list import TraktListManager
+from history_fetcher import HistoryFetcher
+from recommendation_engine import RecommendationEngine
+from tmdb_client import TMDBClient
 
 logger = logging.getLogger(__name__)
 

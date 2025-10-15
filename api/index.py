@@ -4,7 +4,7 @@ import logging
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify
 from dotenv import load_dotenv
 
-# Import our modules
+# Import our modules - use absolute imports for Vercel compatibility
 from trakt_auth import TraktAuth
 from history_fetcher import HistoryFetcher
 from recommendation_engine import RecommendationEngine

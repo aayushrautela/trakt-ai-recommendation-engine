@@ -15,6 +15,7 @@ class TraktAuth:
         self.client_secret = os.getenv('TRAKT_CLIENT_SECRET')
         self.redirect_uri = os.getenv('TRAKT_REDIRECT_URI')
         self.base_url = 'https://api.trakt.tv'
+        self.namespace = os.getenv('REDIS_NAMESPACE', 'trakt_ai_gen')
         
         # Redis connection
         redis_url = os.getenv('REDIS_URL')
@@ -100,7 +101,7 @@ class TraktAuth:
         # Store with expiration (subtract 5 minutes for safety)
         expires_at = time.time() + tokens['expires_in'] - 300
         self.redis_client.setex(
-            f'trakt_tokens:{username}',
+            f'{self.namespace}:trakt_tokens:{username}',
             int(expires_at - time.time()),
             json.dumps(token_data)
         )
@@ -108,7 +109,7 @@ class TraktAuth:
     def get_tokens(self, username):
         """Get tokens from Redis"""
         try:
-            token_data = self.redis_client.get(f'trakt_tokens:{username}')
+            token_data = self.redis_client.get(f'{self.namespace}:trakt_tokens:{username}')
             if token_data:
                 return json.loads(token_data)
         except Exception as e:

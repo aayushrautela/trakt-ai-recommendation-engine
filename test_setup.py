@@ -43,35 +43,37 @@ def test_imports():
     print("\n🔍 Testing module imports...")
     
     try:
-        from api.trakt_auth import TraktAuth
+        import sys
+        sys.path.append('api')
+        from trakt_auth import TraktAuth
         print("✅ TraktAuth imported successfully")
     except ImportError as e:
         print(f"❌ Failed to import TraktAuth: {e}")
         return False
     
     try:
-        from api.recommendation_engine import RecommendationEngine
+        from recommendation_engine import RecommendationEngine
         print("✅ RecommendationEngine imported successfully")
     except ImportError as e:
         print(f"❌ Failed to import RecommendationEngine: {e}")
         return False
     
     try:
-        from api.tmdb_client import TMDBClient
+        from tmdb_client import TMDBClient
         print("✅ TMDBClient imported successfully")
     except ImportError as e:
         print(f"❌ Failed to import TMDBClient: {e}")
         return False
     
     try:
-        from api.history_fetcher import HistoryFetcher
+        from history_fetcher import HistoryFetcher
         print("✅ HistoryFetcher imported successfully")
     except ImportError as e:
         print(f"❌ Failed to import HistoryFetcher: {e}")
         return False
     
     try:
-        from api.trakt_list import TraktListManager
+        from trakt_list import TraktListManager
         print("✅ TraktListManager imported successfully")
     except ImportError as e:
         print(f"❌ Failed to import TraktListManager: {e}")
@@ -84,7 +86,7 @@ def test_api_connections():
     print("\n🔍 Testing API client initialization...")
     
     try:
-        from api.tmdb_client import TMDBClient
+        from tmdb_client import TMDBClient
         tmdb = TMDBClient()
         if tmdb.api_key:
             print("✅ TMDB client initialized successfully")
@@ -96,7 +98,7 @@ def test_api_connections():
         return False
     
     try:
-        from api.recommendation_engine import RecommendationEngine
+        from recommendation_engine import RecommendationEngine
         engine = RecommendationEngine()
         if engine.model:
             print("✅ Gemini client initialized successfully")
@@ -108,7 +110,7 @@ def test_api_connections():
         return False
     
     try:
-        from api.trakt_auth import TraktAuth
+        from trakt_auth import TraktAuth
         auth = TraktAuth()
         if auth.client_id and auth.client_secret:
             print("✅ Trakt auth client initialized successfully")
