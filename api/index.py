@@ -109,6 +109,7 @@ def generate_list():
         all_enriched_movies = []
         max_retries = 3
         current_history = history.copy()  # Start with original history
+        used_movie_ids = set()  # Track used movie IDs to prevent duplicates
         
         for attempt in range(max_retries):
             print(f"Gemini attempt {attempt + 1}/{max_retries}")
@@ -133,8 +134,16 @@ def generate_list():
             new_enriched_movies = tmdb_client.enrich_movie_list(recommendations, selected_genres, watched_movie_ids)
             
             if new_enriched_movies:
-                all_enriched_movies.extend(new_enriched_movies)
-                print(f"Got {len(new_enriched_movies)} new movies this round")
+                # Filter out movies we've already used
+                unique_new_movies = []
+                for movie in new_enriched_movies:
+                    movie_id = movie.get('id')
+                    if movie_id and movie_id not in used_movie_ids:
+                        unique_new_movies.append(movie)
+                        used_movie_ids.add(movie_id)
+                
+                all_enriched_movies.extend(unique_new_movies)
+                print(f"Got {len(unique_new_movies)} new movies this round (filtered from {len(new_enriched_movies)})")
             
             if len(all_enriched_movies) >= 20:
                 print(f"Total: {len(all_enriched_movies)} movies - sufficient!")
@@ -144,7 +153,7 @@ def generate_list():
                 
                 if attempt < max_retries - 1:
                     # Add the new movies to history so Gemini won't suggest them again
-                    for movie in new_enriched_movies:
+                    for movie in unique_new_movies:
                         fake_history_item = {
                             'movie': {
                                 'title': movie.get('title', ''),
@@ -155,7 +164,7 @@ def generate_list():
                         }
                         current_history.append(fake_history_item)
                     
-                    print(f"Added {len(new_enriched_movies)} movies to history for next attempt")
+                    print(f"Added {len(unique_new_movies)} movies to history for next attempt")
                 else:
                     print(f"Could only find {len(all_enriched_movies)} movies after {max_retries} attempts")
         

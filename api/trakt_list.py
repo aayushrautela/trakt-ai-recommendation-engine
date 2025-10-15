@@ -110,18 +110,24 @@ class TraktListManager:
                                 'ids': {'imdb': movie_data['ids']['imdb']}
                             })
             
-            # Prepare new movies data
+            # Prepare new movies data with deduplication
             movies_data = {
                 'movies': []
             }
             
+            # Track TMDB IDs to prevent duplicates
+            used_tmdb_ids = set()
+            
             for movie in movies:
-                movie_item = {
-                    'ids': {
-                        'tmdb': movie.get('id')
+                movie_id = movie.get('id')
+                if movie_id and movie_id not in used_tmdb_ids:
+                    movie_item = {
+                        'ids': {
+                            'tmdb': movie_id
+                        }
                     }
-                }
-                movies_data['movies'].append(movie_item)
+                    movies_data['movies'].append(movie_item)
+                    used_tmdb_ids.add(movie_id)
             
             # Debug: Show sample of what we're sending
             print(f"Sending {len(movies_data['movies'])} movies to Trakt")
