@@ -152,19 +152,24 @@ def generate_list():
                 print(f"Need {20 - len(all_enriched_movies)} more movies")
                 
                 if attempt < max_retries - 1:
-                    # Add ALL movies (both used and new) to history so Gemini won't suggest them again
-                    for movie in new_enriched_movies:
-                        fake_history_item = {
-                            'movie': {
-                                'title': movie.get('title', ''),
-                                'year': movie.get('release_date', '').split('-')[0] if movie.get('release_date') else '',
-                                'ids': {'tmdb': movie.get('id')},
-                                'genres': [{'name': genre} for genre in movie.get('genre_names', [])]
+                    # Add ALL Gemini recommendations to history so it won't suggest them again
+                    for recommendation in recommendations:
+                        # Parse the recommendation to extract title and year
+                        if '(' in recommendation and ')' in recommendation:
+                            title = recommendation.split('(')[0].strip()
+                            year = recommendation.split('(')[1].split(')')[0].strip()
+                            
+                            fake_history_item = {
+                                'movie': {
+                                    'title': title,
+                                    'year': year,
+                                    'ids': {'tmdb': None},  # No TMDB ID since it wasn't found
+                                    'genres': []  # No genre info from raw text
+                                }
                             }
-                        }
-                        current_history.append(fake_history_item)
+                            current_history.append(fake_history_item)
                     
-                    print(f"Added {len(new_enriched_movies)} movies to history for next attempt")
+                    print(f"Added {len(recommendations)} movies to history for next attempt")
                 else:
                     print(f"Could only find {len(all_enriched_movies)} movies after {max_retries} attempts")
         
