@@ -105,28 +105,68 @@ def generate_list():
                 "error": f"No watch history found for the selected time period ({time_period}). Please watch some movies first!"
             }), 400
         
-        # Generate AI recommendations
-        recommendations = recommendation_engine.analyze_watch_history(
-            history, time_period, selected_genres
-        )
+        # Generate AI recommendations with retry logic to get 20 movies
+        all_enriched_movies = []
+        max_retries = 3
+        current_history = history.copy()  # Start with original history
         
-        if not recommendations:
+        for attempt in range(max_retries):
+            print(f"🔄 Gemini attempt {attempt + 1}/{max_retries}")
+            
+            # Generate AI recommendations
+            recommendations = recommendation_engine.analyze_watch_history(
+                current_history, time_period, selected_genres
+            )
+            
+            if not recommendations:
+                if attempt == max_retries - 1:
+                    return jsonify({
+                        "success": False,
+                        "error": "Failed to generate recommendations after multiple attempts."
+                    }), 500
+                continue
+            
+            # Get watched movie IDs to filter out
+            watched_movie_ids = history_fetcher.get_watched_movie_ids(history)
+            
+            # Enrich with TMDB data and filter out watched movies
+            new_enriched_movies = tmdb_client.enrich_movie_list(recommendations, selected_genres, watched_movie_ids)
+            
+            if new_enriched_movies:
+                all_enriched_movies.extend(new_enriched_movies)
+                print(f"📊 Got {len(new_enriched_movies)} new movies this round")
+            
+            if len(all_enriched_movies) >= 20:
+                print(f"✅ Total: {len(all_enriched_movies)} movies - sufficient!")
+                break
+            else:
+                print(f"⚠️ Need {20 - len(all_enriched_movies)} more movies")
+                
+                if attempt < max_retries - 1:
+                    # Add the new movies to history so Gemini won't suggest them again
+                    for movie in new_enriched_movies:
+                        fake_history_item = {
+                            'movie': {
+                                'title': movie.get('title', ''),
+                                'year': movie.get('release_date', '').split('-')[0] if movie.get('release_date') else '',
+                                'ids': {'tmdb': movie.get('id')},
+                                'genres': [{'name': genre} for genre in movie.get('genre_names', [])]
+                            }
+                        }
+                        current_history.append(fake_history_item)
+                    
+                    print(f"📝 Added {len(new_enriched_movies)} movies to history for next attempt")
+                else:
+                    print(f"⚠️ Could only find {len(all_enriched_movies)} movies after {max_retries} attempts")
+        
+        if not all_enriched_movies:
             return jsonify({
                 "success": False,
-                "error": "Failed to generate recommendations. Please try again."
+                "error": "Failed to generate any recommendations."
             }), 500
         
-        # Get watched movie IDs to filter out
-        watched_movie_ids = history_fetcher.get_watched_movie_ids(history)
-        
-        # Enrich with TMDB data and filter out watched movies
-        enriched_movies = tmdb_client.enrich_movie_list(recommendations, selected_genres, watched_movie_ids)
-        
-        if not enriched_movies:
-            return jsonify({
-                "success": False,
-                "error": "Failed to find movie information. Please try again."
-            }), 500
+        # Use only the first 20 movies
+        enriched_movies = all_enriched_movies[:20]
         
         # Create/update Trakt list
         list_url = list_manager.create_or_update_list(username, list_name, enriched_movies)
@@ -155,7 +195,7 @@ def generate_list():
         })
         
     except Exception as e:
-        logger.error(f"Error generating list: {e}")
+        print(f"❌ Unexpected error: {e}", file=sys.stderr)
         return jsonify({
             "success": False,
             "error": "An unexpected error occurred. Please try again."
@@ -174,7 +214,7 @@ def logout():
         username = session['username']
         # Optionally delete stored tokens
         session.clear()
-        logger.info(f"User {username} logged out")
+        print(f"👋 User {username} logged out")
     
     return redirect(url_for('index'))
 
@@ -198,7 +238,7 @@ def not_found(error):
 
 @app.errorhandler(500)
 def internal_error(error):
-    logger.error(f"Internal server error: {error}")
+    print(f"❌ Internal server error: {error}", file=sys.stderr)
     return jsonify({"error": "Internal server error"}), 500
 
 # For local development

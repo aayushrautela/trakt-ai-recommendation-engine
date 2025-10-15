@@ -249,10 +249,9 @@ class TraktListManager:
         try:
             config_key = f'{self.namespace}:user_config:{username}'
             self.redis_client.setex(config_key, 86400 * 30, json.dumps(config))  # 30 days expiry
-            logger.info(f"Stored config for {username}")
             return True
         except Exception as e:
-            logger.error(f"Failed to store config for {username}: {e}")
+            print(f"❌ Failed to store config: {e}", file=sys.stderr)
             return False
     
     def get_user_config(self, username: str) -> Optional[Dict]:
@@ -263,7 +262,7 @@ class TraktListManager:
             if config_data:
                 return json.loads(config_data)
         except Exception as e:
-            logger.error(f"Failed to get config for {username}: {e}")
+            print(f"❌ Failed to get config: {e}", file=sys.stderr)
         return None
     
     def get_all_user_configs(self) -> Dict[str, Dict]:
@@ -280,7 +279,7 @@ class TraktListManager:
             
             return configs
         except Exception as e:
-            logger.error(f"Failed to get all user configs: {e}")
+            print(f"❌ Failed to get user configs: {e}", file=sys.stderr)
             return {}
     
     def delete_user_config(self, username: str) -> bool:
@@ -288,10 +287,9 @@ class TraktListManager:
         try:
             config_key = f'{self.namespace}:user_config:{username}'
             self.redis_client.delete(config_key)
-            logger.info(f"Deleted config for {username}")
             return True
         except Exception as e:
-            logger.error(f"Failed to delete config for {username}: {e}")
+            print(f"❌ Failed to delete config: {e}", file=sys.stderr)
             return False
     
     def convert_tmdb_to_trakt_items(self, movies: List[Dict]) -> List[Dict]:
