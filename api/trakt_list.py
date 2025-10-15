@@ -31,7 +31,6 @@ class TraktListManager:
         
         if list_id:
             # For existing lists, we'll replace all items in one operation
-            print(f"Updating existing list '{list_name}'")
             success = self._replace_list_items(username, list_id, movies)
         else:
             # Create new list
@@ -39,12 +38,11 @@ class TraktListManager:
             if not list_id:
                 print(f"ERROR: Failed to create list '{list_name}'", file=sys.stderr)
                 return None
-            print(f"Created new list '{list_name}'")
             success = self._add_movies_to_list(username, list_id, movies)
         
         if success:
             list_url = f"https://trakt.tv/users/{username}/lists/{list_id}"
-            print(f"Successfully updated list with {len(movies)} movies")
+            print(f"✅ Updated Trakt list with {len(movies)} movies")
             return list_url
         else:
             print(f"ERROR: Failed to update Trakt list", file=sys.stderr)
@@ -129,11 +127,7 @@ class TraktListManager:
                     movies_data['movies'].append(movie_item)
                     used_tmdb_ids.add(movie_id)
             
-            # Debug: Show sample of what we're sending
-            print(f"Sending {len(movies_data['movies'])} movies to Trakt")
-            if movies_data['movies']:
-                sample_movie = movies_data['movies'][0]
-                print(f"Sample movie data: {sample_movie}")
+            # Prepare movies for Trakt API
             
             # If there are items to remove, do it first
             if movies_to_remove:
@@ -147,7 +141,6 @@ class TraktListManager:
                     print(f"WARNING: Failed to clear existing items, but continuing...", file=sys.stderr)
                 
                 # Add 3 second delay after clearing list
-                print("Waiting 3 seconds before adding new movies...")
                 import time
                 time.sleep(3)
             
@@ -160,10 +153,6 @@ class TraktListManager:
                 added_count = add_result.get('added', {}).get('movies', 0)
                 existing_count = add_result.get('existing', {}).get('movies', 0)
                 not_found_count = len(add_result.get('not_found', {}).get('movies', []))
-                total_in_list = add_result.get('list', {}).get('item_count', 0)
-                
-                print(f"Added {added_count} new movies, {existing_count} already existed, {not_found_count} not found")
-                print(f"Total movies in list: {total_in_list}")
                 
                 # Consider it successful if we added at least some movies
                 if added_count > 0 or existing_count > 0:

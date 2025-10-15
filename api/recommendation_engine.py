@@ -2,9 +2,18 @@ import os
 import sys
 import json
 import logging
-import google.generativeai as genai
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
+
+# Suppress Google AI library warnings during import
+stderr_original = sys.stderr
+sys.stderr = open(os.devnull, 'w')
+
+try:
+    import google.generativeai as genai
+finally:
+    # Restore stderr to its original state
+    sys.stderr = stderr_original
 
 logger = logging.getLogger(__name__)
 
@@ -12,8 +21,16 @@ class RecommendationEngine:
     def __init__(self):
         self.api_key = os.getenv('GEMINI_API_KEY')
         if self.api_key:
-            genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel('gemini-2.5-flash')
+            # Suppress warnings during model initialization
+            stderr_original = sys.stderr
+            sys.stderr = open(os.devnull, 'w')
+            
+            try:
+                genai.configure(api_key=self.api_key)
+                self.model = genai.GenerativeModel('gemini-2.5-flash')
+            finally:
+                # Restore stderr to its original state
+                sys.stderr = stderr_original
         else:
             self.model = None
             logger.error("GEMINI_API_KEY not found")
@@ -130,7 +147,7 @@ Do not include any explanations, introductions, or additional text. Just the mov
                 if '(' in line and ')' in line and any(c.isdigit() for c in line):
                     recommendations.append(line)
             
-            print(f"Generated {len(recommendations)} AI recommendations")
+            # Generated AI recommendations
             return recommendations
             
         except Exception as e:

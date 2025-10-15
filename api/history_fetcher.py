@@ -57,7 +57,7 @@ class HistoryFetcher:
             if page > 50:  # Max 5000 items
                 break
         
-        print(f"Fetched {len(all_history)} movies from {time_period}")
+        # Fetched movies from history
         return all_history
     
     def extract_movie_info(self, history_item: Dict) -> Dict:

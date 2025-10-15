@@ -94,8 +94,6 @@ def generate_list():
         selected_genres = data.get('genres', [])
         list_name = data.get('list_name', 'AI Recommendations')
         
-        print(f"Generating recommendations for {username}")
-        
         # Fetch watch history
         history = history_fetcher.get_filtered_history(username, time_period)
         
@@ -112,8 +110,6 @@ def generate_list():
         used_movie_ids = set()  # Track used movie IDs to prevent duplicates
         
         for attempt in range(max_retries):
-            print(f"Gemini attempt {attempt + 1}/{max_retries}")
-            
             # Generate AI recommendations (now asks for 50 movies)
             recommendations = recommendation_engine.analyze_watch_history(
                 current_history, time_period, selected_genres
@@ -143,14 +139,10 @@ def generate_list():
                         used_movie_ids.add(movie_id)
                 
                 all_enriched_movies.extend(unique_new_movies)
-                print(f"Got {len(unique_new_movies)} new movies this round (filtered from {len(new_enriched_movies)})")
             
             if len(all_enriched_movies) >= 20:
-                print(f"Total: {len(all_enriched_movies)} movies - sufficient!")
                 break
             else:
-                print(f"Need {20 - len(all_enriched_movies)} more movies")
-                
                 if attempt < max_retries - 1:
                     # Add ALL Gemini recommendations to history so it won't suggest them again
                     for recommendation in recommendations:
@@ -168,10 +160,6 @@ def generate_list():
                                 }
                             }
                             current_history.append(fake_history_item)
-                    
-                    print(f"Added {len(recommendations)} movies to history for next attempt")
-                else:
-                    print(f"Could only find {len(all_enriched_movies)} movies after {max_retries} attempts")
         
         if not all_enriched_movies:
             return jsonify({
@@ -199,7 +187,7 @@ def generate_list():
         }
         list_manager.store_user_config(username, config)
         
-        print(f"List generation completed successfully!")
+        print(f"✅ Successfully generated {len(enriched_movies)} movie recommendations")
         
         return jsonify({
             "success": True,
@@ -228,7 +216,7 @@ def logout():
         username = session['username']
         # Optionally delete stored tokens
         session.clear()
-        print(f"User {username} logged out")
+        # User logged out
     
     return redirect(url_for('index'))
 
