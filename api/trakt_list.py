@@ -145,6 +145,11 @@ class TraktListManager:
                 
                 if not remove_result:
                     print(f"WARNING: Failed to clear existing items, but continuing...", file=sys.stderr)
+                
+                # Add 3 second delay after clearing list
+                print("Waiting 3 seconds before adding new movies...")
+                import time
+                time.sleep(3)
             
             # Add new movies
             add_endpoint = f'/users/{username}/lists/{list_id}/items'
