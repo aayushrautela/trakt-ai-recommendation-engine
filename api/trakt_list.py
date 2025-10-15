@@ -102,13 +102,13 @@ class TraktListManager:
             return False
     
     def _clear_list_items(self, username: str, list_id: str) -> bool:
-        """Clear all items from a list by getting current items and removing them individually"""
+        """Clear all items from a list by using the correct Trakt API /items/remove endpoint"""
         try:
             # First, get all current items in the list
-            endpoint = f'/users/{username}/lists/{list_id}/items'
+            items_endpoint = f'/users/{username}/lists/{list_id}/items'
             logger.info(f"Getting current items from list {list_id} for {username}")
             
-            current_items = self.trakt_auth.make_authenticated_request(username, endpoint, 'GET')
+            current_items = self.trakt_auth.make_authenticated_request(username, items_endpoint, 'GET')
             
             if not current_items:
                 logger.info(f"List {list_id} is already empty")
@@ -116,38 +116,51 @@ class TraktListManager:
             
             logger.info(f"Found {len(current_items)} items in list {list_id}")
             
-            # Prepare removal data for all movies
+            # Prepare removal data using the correct format
             movies_to_remove = []
             shows_to_remove = []
             
             for item in current_items:
                 if item.get('type') == 'movie':
                     movie_data = item.get('movie', {})
-                    if movie_data.get('ids', {}).get('tmdb'):
+                    # Try different ID types that might be available
+                    if movie_data.get('ids', {}).get('trakt'):
+                        movies_to_remove.append({
+                            'ids': {'trakt': movie_data['ids']['trakt']}
+                        })
+                    elif movie_data.get('ids', {}).get('tmdb'):
                         movies_to_remove.append({
                             'ids': {'tmdb': movie_data['ids']['tmdb']}
                         })
+                    elif movie_data.get('ids', {}).get('imdb'):
+                        movies_to_remove.append({
+                            'ids': {'imdb': movie_data['ids']['imdb']}
+                        })
                 elif item.get('type') == 'show':
                     show_data = item.get('show', {})
-                    if show_data.get('ids', {}).get('tmdb'):
+                    if show_data.get('ids', {}).get('trakt'):
+                        shows_to_remove.append({
+                            'ids': {'trakt': show_data['ids']['trakt']}
+                        })
+                    elif show_data.get('ids', {}).get('tmdb'):
                         shows_to_remove.append({
                             'ids': {'tmdb': show_data['ids']['tmdb']}
                         })
             
-            # Remove movies and shows in batches
-            removal_data = {}
-            if movies_to_remove:
-                removal_data['movies'] = movies_to_remove
-            if shows_to_remove:
-                removal_data['shows'] = shows_to_remove
-            
-            if removal_data:
+            # Use the /items/remove endpoint
+            if movies_to_remove or shows_to_remove:
+                remove_data = {}
+                if movies_to_remove:
+                    remove_data['movies'] = movies_to_remove
+                if shows_to_remove:
+                    remove_data['shows'] = shows_to_remove
+                
                 logger.info(f"Removing {len(movies_to_remove)} movies and {len(shows_to_remove)} shows from list")
                 
-                # Use the items endpoint with POST to remove items
-                items_endpoint = f'/users/{username}/lists/{list_id}/items'
+                # Use the correct /items/remove endpoint
+                remove_endpoint = f'/users/{username}/lists/{list_id}/items/remove'
                 remove_result = self.trakt_auth.make_authenticated_request(
-                    username, items_endpoint, 'POST', removal_data
+                    username, remove_endpoint, 'POST', remove_data
                 )
                 
                 if remove_result:
@@ -162,6 +175,44 @@ class TraktListManager:
         except Exception as e:
             logger.error(f"Error clearing list {list_id}: {e}")
             return True  # Continue even if clear fails
+    
+    def _clear_list_items_individually(self, username: str, list_id: str) -> bool:
+        """Fallback method to clear items individually"""
+        try:
+            # Get all current items
+            endpoint = f'/users/{username}/lists/{list_id}/items'
+            current_items = self.trakt_auth.make_authenticated_request(username, endpoint, 'GET')
+            
+            if not current_items:
+                logger.info(f"List {list_id} is already empty")
+                return True
+            
+            logger.info(f"Found {len(current_items)} items to remove individually")
+            
+            # Remove items one by one (this is slower but more reliable)
+            removed_count = 0
+            for item in current_items:
+                try:
+                    # Get the item ID from the response
+                    item_id = item.get('id')
+                    if item_id:
+                        # Use the specific item endpoint to remove
+                        item_endpoint = f'/users/{username}/lists/{list_id}/items/{item_id}'
+                        result = self.trakt_auth.make_authenticated_request(username, item_endpoint, 'DELETE')
+                        if result is not None:
+                            removed_count += 1
+                        else:
+                            logger.warning(f"Failed to remove item {item_id}")
+                except Exception as e:
+                    logger.warning(f"Error removing individual item: {e}")
+                    continue
+            
+            logger.info(f"Removed {removed_count} out of {len(current_items)} items")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error in individual removal: {e}")
+            return True
     
     def _add_movies_to_list(self, username: str, list_id: str, movies: List[Dict]) -> bool:
         """Add movies to a list"""
