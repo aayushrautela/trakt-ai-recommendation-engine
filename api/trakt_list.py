@@ -94,24 +94,34 @@ class TraktListManager:
     
     def _add_movies_to_list(self, username: str, list_id: str, movies: List[Dict]) -> bool:
         """Add movies to a list"""
-        # Prepare movies data for Trakt API
-        movies_data = []
+        # Prepare movies data for Trakt API - correct format
+        movies_data = {
+            'movies': []
+        }
         
         for movie in movies:
             # Convert TMDB data to Trakt format
             movie_item = {
-                'movies': [{
-                    'ids': {
-                        'tmdb': movie.get('id')
-                    }
-                }]
+                'ids': {
+                    'tmdb': movie.get('id')
+                }
             }
-            movies_data.append(movie_item)
+            movies_data['movies'].append(movie_item)
         
         endpoint = f'/users/{username}/lists/{list_id}/items'
         
+        # Debug logging
+        logger.info(f"Sending {len(movies_data['movies'])} movies to Trakt API")
+        logger.info(f"Sample movie data: {movies_data['movies'][:2] if movies_data['movies'] else 'No movies'}")
+        
         result = self.trakt_auth.make_authenticated_request(username, endpoint, 'POST', movies_data)
-        return result is not None
+        
+        if result:
+            logger.info(f"Trakt API response: {result}")
+            return True
+        else:
+            logger.error("Trakt API returned no result")
+            return False
     
     def store_user_config(self, username: str, config: Dict) -> bool:
         """Store user configuration in Redis for nightly updates"""

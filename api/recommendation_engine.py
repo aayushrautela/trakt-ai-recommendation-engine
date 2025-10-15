@@ -112,6 +112,8 @@ Do not include any explanations, introductions, or additional text. Just the mov
         recommendations = []
         
         try:
+            logger.info(f"Raw Gemini response: {response_text[:500]}...")  # Log first 500 chars
+            
             lines = response_text.strip().split('\n')
             
             for line in lines:
@@ -128,6 +130,7 @@ Do not include any explanations, introductions, or additional text. Just the mov
                 # Basic validation - should contain a year in parentheses
                 if '(' in line and ')' in line and any(c.isdigit() for c in line):
                     recommendations.append(line)
+                    logger.info(f"Added recommendation: {line}")
             
             logger.info(f"Parsed {len(recommendations)} recommendations from Gemini")
             return recommendations
