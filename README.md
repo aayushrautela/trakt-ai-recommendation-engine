@@ -9,7 +9,6 @@ An intelligent movie recommendation system that analyzes your Trakt.tv watch his
 - **🎭 Genre Filtering**: Filter recommendations by specific genres
 - **🔄 Automatic Updates**: Lists are refreshed nightly with fresh recommendations
 - **🔐 Secure Authentication**: Persistent OAuth with Trakt using Redis token storage
-- **🎨 Clean Web Interface**: Simple, responsive design for easy configuration
 
 ## How It Works
 
@@ -57,12 +56,6 @@ An intelligent movie recommendation system that analyzes your Trakt.tv watch his
 6. List automatically updates every night at 2 AM UTC
 
 ## Technical Details
-
-### Smart Recommendation System
-- **50 movies per request** to Gemini AI for better variety
-- **Intelligent retry logic** with 3 attempts to get 20 unique movies
-- **Duplicate prevention** at multiple levels
-- **Watched movie filtering** to avoid suggesting already-seen content
 
 ### API Endpoints
 - `GET /` - Main interface
