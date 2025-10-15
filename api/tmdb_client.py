@@ -126,8 +126,8 @@ class TMDBClient:
         
         return filtered_movies
     
-    def enrich_movie_list(self, movie_titles: List[str], selected_genres: List[str] = None) -> List[Dict]:
-        """Enrich a list of movie titles with TMDB data and filter by genres"""
+    def enrich_movie_list(self, movie_titles: List[str], selected_genres: List[str] = None, watched_movie_ids: set = None) -> List[Dict]:
+        """Enrich a list of movie titles with TMDB data and filter by genres and watched status"""
         enriched_movies = []
         
         logger.info(f"Enriching {len(movie_titles)} movie titles")
@@ -145,12 +145,17 @@ class TMDBClient:
             
             movie_data = self.search_movie(title, year)
             if movie_data:
+                # Check if this movie is already watched
+                if watched_movie_ids and movie_data.get('id') in watched_movie_ids:
+                    logger.info(f"Skipping already watched movie: {title} (TMDB ID: {movie_data.get('id')})")
+                    continue
+                
                 enriched_movies.append(movie_data)
                 logger.info(f"Found TMDB data for: {title} (TMDB ID: {movie_data.get('id')})")
             else:
                 logger.warning(f"No TMDB data found for: {title}")
         
-        logger.info(f"Found TMDB data for {len(enriched_movies)} movies")
+        logger.info(f"Found TMDB data for {len(enriched_movies)} movies (after filtering watched)")
         
         # Filter by genres if specified
         if selected_genres:

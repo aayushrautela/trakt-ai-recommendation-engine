@@ -84,8 +84,11 @@ class ListUpdater:
                 logger.warning(f"No recommendations generated for {username}")
                 return False
             
-            # Enrich with TMDB data
-            enriched_movies = self.tmdb_client.enrich_movie_list(recommendations, selected_genres)
+            # Get watched movie IDs to filter out
+            watched_movie_ids = self.history_fetcher.get_watched_movie_ids(history)
+            
+            # Enrich with TMDB data and filter out watched movies
+            enriched_movies = self.tmdb_client.enrich_movie_list(recommendations, selected_genres, watched_movie_ids)
             
             if not enriched_movies:
                 logger.warning(f"No enriched movies for {username}")

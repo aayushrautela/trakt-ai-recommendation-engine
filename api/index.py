@@ -117,8 +117,11 @@ def generate_list():
                 "error": "Failed to generate recommendations. Please try again."
             }), 500
         
-        # Enrich with TMDB data
-        enriched_movies = tmdb_client.enrich_movie_list(recommendations, selected_genres)
+        # Get watched movie IDs to filter out
+        watched_movie_ids = history_fetcher.get_watched_movie_ids(history)
+        
+        # Enrich with TMDB data and filter out watched movies
+        enriched_movies = tmdb_client.enrich_movie_list(recommendations, selected_genres, watched_movie_ids)
         
         if not enriched_movies:
             return jsonify({

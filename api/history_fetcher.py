@@ -121,3 +121,16 @@ class HistoryFetcher:
         # Sort by count and return genre names
         sorted_genres = sorted(genre_stats.items(), key=lambda x: x[1], reverse=True)
         return [genre[0] for genre in sorted_genres[:top_n]]
+    
+    def get_watched_movie_ids(self, history: List[Dict]) -> set:
+        """Extract TMDB IDs of watched movies to filter out from recommendations"""
+        watched_ids = set()
+        
+        for item in history:
+            movie_data = item.get('movie', {})
+            tmdb_id = movie_data.get('ids', {}).get('tmdb')
+            if tmdb_id:
+                watched_ids.add(tmdb_id)
+        
+        logger.info(f"Found {len(watched_ids)} unique watched movie TMDB IDs")
+        return watched_ids

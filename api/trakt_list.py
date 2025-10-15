@@ -29,9 +29,11 @@ class TraktListManager:
         list_id = self._find_list_by_name(username, list_name)
         
         if list_id:
-            # Clear existing list
-            self._clear_list(username, list_id)
-            logger.info(f"Cleared existing list '{list_name}' for {username}")
+            # Clear existing list completely
+            logger.info(f"Found existing list '{list_name}' (ID: {list_id}) - clearing all items")
+            clear_success = self._clear_list(username, list_id)
+            if not clear_success:
+                logger.warning(f"Failed to clear existing list, but continuing...")
         else:
             # Create new list
             list_id = self._create_list(username, list_name)
