@@ -29,11 +29,11 @@ class TraktListManager:
         list_id = self._find_list_by_name(username, list_name)
         
         if list_id:
-            # Clear existing list completely
-            logger.info(f"Found existing list '{list_name}' (ID: {list_id}) - clearing all items")
-            clear_success = self._clear_list(username, list_id)
+            # Clear existing list items while keeping the same list ID
+            logger.info(f"Found existing list '{list_name}' (ID: {list_id}) - clearing items")
+            clear_success = self._clear_list_items(username, list_id)
             if not clear_success:
-                logger.warning(f"Failed to clear existing list, but continuing...")
+                logger.warning(f"Failed to clear existing list items, but continuing...")
         else:
             # Create new list
             list_id = self._create_list(username, list_name)
@@ -87,18 +87,80 @@ class TraktListManager:
         
         return None
     
-    def _clear_list(self, username: str, list_id: str) -> bool:
-        """Clear all items from a list"""
-        endpoint = f'/users/{username}/lists/{list_id}/items'
+    def _delete_list(self, username: str, list_id: str) -> bool:
+        """Delete an entire list"""
+        endpoint = f'/users/{username}/lists/{list_id}'
         
-        logger.info(f"Clearing list {list_id} for {username}")
+        logger.info(f"Deleting list {list_id} for {username}")
         result = self.trakt_auth.make_authenticated_request(username, endpoint, 'DELETE')
         
         if result is not None:
-            logger.info(f"Successfully cleared list {list_id}")
+            logger.info(f"Successfully deleted list {list_id}")
             return True
         else:
-            logger.warning(f"Failed to clear list {list_id} - continuing anyway")
+            logger.warning(f"Failed to delete list {list_id}")
+            return False
+    
+    def _clear_list_items(self, username: str, list_id: str) -> bool:
+        """Clear all items from a list by getting current items and removing them individually"""
+        try:
+            # First, get all current items in the list
+            endpoint = f'/users/{username}/lists/{list_id}/items'
+            logger.info(f"Getting current items from list {list_id} for {username}")
+            
+            current_items = self.trakt_auth.make_authenticated_request(username, endpoint, 'GET')
+            
+            if not current_items:
+                logger.info(f"List {list_id} is already empty")
+                return True
+            
+            logger.info(f"Found {len(current_items)} items in list {list_id}")
+            
+            # Prepare removal data for all movies
+            movies_to_remove = []
+            shows_to_remove = []
+            
+            for item in current_items:
+                if item.get('type') == 'movie':
+                    movie_data = item.get('movie', {})
+                    if movie_data.get('ids', {}).get('tmdb'):
+                        movies_to_remove.append({
+                            'ids': {'tmdb': movie_data['ids']['tmdb']}
+                        })
+                elif item.get('type') == 'show':
+                    show_data = item.get('show', {})
+                    if show_data.get('ids', {}).get('tmdb'):
+                        shows_to_remove.append({
+                            'ids': {'tmdb': show_data['ids']['tmdb']}
+                        })
+            
+            # Remove movies and shows in batches
+            removal_data = {}
+            if movies_to_remove:
+                removal_data['movies'] = movies_to_remove
+            if shows_to_remove:
+                removal_data['shows'] = shows_to_remove
+            
+            if removal_data:
+                logger.info(f"Removing {len(movies_to_remove)} movies and {len(shows_to_remove)} shows from list")
+                
+                # Use the items endpoint with POST to remove items
+                items_endpoint = f'/users/{username}/lists/{list_id}/items'
+                remove_result = self.trakt_auth.make_authenticated_request(
+                    username, items_endpoint, 'POST', removal_data
+                )
+                
+                if remove_result:
+                    logger.info(f"Successfully removed items from list {list_id}")
+                    logger.info(f"Removal result: {remove_result}")
+                    return True
+                else:
+                    logger.warning(f"Failed to remove items from list {list_id}")
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error clearing list {list_id}: {e}")
             return True  # Continue even if clear fails
     
     def _add_movies_to_list(self, username: str, list_id: str, movies: List[Dict]) -> bool:
