@@ -94,13 +94,12 @@ def generate_list():
         selected_genres = data.get('genres', [])
         list_name = data.get('list_name', 'AI Recommendations')
         
-        logger.info(f"Generating list for {username}: {time_period}, genres: {selected_genres}")
+        print(f"🎯 Generating recommendations for {username}")
         
         # Fetch watch history
         history = history_fetcher.get_filtered_history(username, time_period)
         
         if not history:
-            logger.warning(f"No watch history found for {username} in {time_period}")
             return jsonify({
                 "success": False, 
                 "error": f"No watch history found for the selected time period ({time_period}). Please watch some movies first!"
@@ -145,6 +144,8 @@ def generate_list():
             'list_name': list_name
         }
         list_manager.store_user_config(username, config)
+        
+        print(f"🎉 List generation completed successfully!")
         
         return jsonify({
             "success": True,

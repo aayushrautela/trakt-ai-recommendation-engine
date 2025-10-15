@@ -1,4 +1,5 @@
 import os
+import sys
 import requests
 import logging
 from typing import List, Dict, Optional
@@ -130,8 +131,6 @@ class TMDBClient:
         """Enrich a list of movie titles with TMDB data and filter by genres and watched status"""
         enriched_movies = []
         
-        logger.info(f"Enriching {len(movie_titles)} movie titles")
-        
         for title in movie_titles:
             # Try to extract year from title if present
             year = None
@@ -147,29 +146,19 @@ class TMDBClient:
             if movie_data:
                 # Check if this movie is already watched
                 if watched_movie_ids and movie_data.get('id') in watched_movie_ids:
-                    logger.info(f"Skipping already watched movie: {title} (TMDB ID: {movie_data.get('id')})")
                     continue
                 
                 enriched_movies.append(movie_data)
-                logger.info(f"Found TMDB data for: {title} (TMDB ID: {movie_data.get('id')})")
-            else:
-                logger.warning(f"No TMDB data found for: {title}")
-        
-        logger.info(f"Found TMDB data for {len(enriched_movies)} movies (after filtering watched)")
         
         # Filter by genres if specified
         if selected_genres:
             enriched_movies = self.filter_movies_by_genres(enriched_movies, selected_genres)
-            logger.info(f"After genre filtering: {len(enriched_movies)} movies")
         
         # Sort by popularity and return top 20
         enriched_movies.sort(key=lambda x: x.get('popularity', 0), reverse=True)
         final_movies = enriched_movies[:20]
         
-        logger.info(f"Final movies to add to Trakt: {len(final_movies)}")
-        for movie in final_movies[:3]:  # Log first 3 for debugging
-            logger.info(f"Sample movie: {movie.get('title')} (TMDB ID: {movie.get('id')})")
-        
+        print(f"✅ Found {len(final_movies)} movies after filtering")
         return final_movies
     
     def convert_to_trakt_slug(self, movie_data: Dict) -> str:

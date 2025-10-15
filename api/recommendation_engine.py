@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import logging
 import google.generativeai as genai
@@ -39,7 +40,7 @@ class RecommendationEngine:
             return recommendations
             
         except Exception as e:
-            logger.error(f"Gemini recommendation generation failed: {e}")
+            print(f"❌ Gemini AI failed: {e}", file=sys.stderr)
             return []
     
     def _prepare_history_summary(self, watch_history: List[Dict]) -> str:
@@ -112,8 +113,6 @@ Do not include any explanations, introductions, or additional text. Just the mov
         recommendations = []
         
         try:
-            logger.info(f"Raw Gemini response: {response_text[:500]}...")  # Log first 500 chars
-            
             lines = response_text.strip().split('\n')
             
             for line in lines:
@@ -130,9 +129,8 @@ Do not include any explanations, introductions, or additional text. Just the mov
                 # Basic validation - should contain a year in parentheses
                 if '(' in line and ')' in line and any(c.isdigit() for c in line):
                     recommendations.append(line)
-                    logger.info(f"Added recommendation: {line}")
             
-            logger.info(f"Parsed {len(recommendations)} recommendations from Gemini")
+            print(f"✅ Generated {len(recommendations)} AI recommendations")
             return recommendations
             
         except Exception as e:

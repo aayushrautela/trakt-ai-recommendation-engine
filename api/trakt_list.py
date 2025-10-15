@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import redis
 import logging
@@ -30,27 +31,27 @@ class TraktListManager:
         
         if list_id:
             # Clear existing list items while keeping the same list ID
-            logger.info(f"Found existing list '{list_name}' (ID: {list_id}) - clearing items")
+            print(f"🔄 Updating existing list '{list_name}'")
             clear_success = self._clear_list_items(username, list_id)
             if not clear_success:
-                logger.warning(f"Failed to clear existing list items, but continuing...")
+                print(f"⚠️  Failed to clear existing list items, but continuing...", file=sys.stderr)
         else:
             # Create new list
             list_id = self._create_list(username, list_name)
             if not list_id:
-                logger.error(f"Failed to create list '{list_name}' for {username}")
+                print(f"❌ Failed to create list '{list_name}'", file=sys.stderr)
                 return None
-            logger.info(f"Created new list '{list_name}' for {username}")
+            print(f"✨ Created new list '{list_name}'")
         
         # Add movies to list
         success = self._add_movies_to_list(username, list_id, movies)
         
         if success:
             list_url = f"https://trakt.tv/users/{username}/lists/{list_id}"
-            logger.info(f"Successfully added {len(movies)} movies to list for {username}")
+            print(f"🎬 Successfully added {len(movies)} movies to Trakt list")
             return list_url
         else:
-            logger.error(f"Failed to add movies to list for {username}")
+            print(f"❌ Failed to add movies to Trakt list", file=sys.stderr)
             return None
     
     def _find_list_by_name(self, username: str, list_name: str) -> Optional[str]:
@@ -106,15 +107,10 @@ class TraktListManager:
         try:
             # First, get all current items in the list
             items_endpoint = f'/users/{username}/lists/{list_id}/items'
-            logger.info(f"Getting current items from list {list_id} for {username}")
-            
             current_items = self.trakt_auth.make_authenticated_request(username, items_endpoint, 'GET')
             
             if not current_items:
-                logger.info(f"List {list_id} is already empty")
                 return True
-            
-            logger.info(f"Found {len(current_items)} items in list {list_id}")
             
             # Prepare removal data using the correct format
             movies_to_remove = []
@@ -155,8 +151,6 @@ class TraktListManager:
                 if shows_to_remove:
                     remove_data['shows'] = shows_to_remove
                 
-                logger.info(f"Removing {len(movies_to_remove)} movies and {len(shows_to_remove)} shows from list")
-                
                 # Use the correct /items/remove endpoint
                 remove_endpoint = f'/users/{username}/lists/{list_id}/items/remove'
                 remove_result = self.trakt_auth.make_authenticated_request(
@@ -164,16 +158,15 @@ class TraktListManager:
                 )
                 
                 if remove_result:
-                    logger.info(f"Successfully removed items from list {list_id}")
-                    logger.info(f"Removal result: {remove_result}")
+                    print(f"🗑️  Cleared {len(movies_to_remove)} movies from list")
                     return True
                 else:
-                    logger.warning(f"Failed to remove items from list {list_id}")
+                    print(f"⚠️  Failed to clear list items", file=sys.stderr)
             
             return True
             
         except Exception as e:
-            logger.error(f"Error clearing list {list_id}: {e}")
+            print(f"❌ Error clearing list: {e}", file=sys.stderr)
             return True  # Continue even if clear fails
     
     def _clear_list_items_individually(self, username: str, list_id: str) -> bool:
@@ -232,26 +225,21 @@ class TraktListManager:
         
         endpoint = f'/users/{username}/lists/{list_id}/items'
         
-        # Debug logging
-        logger.info(f"Sending {len(movies_data['movies'])} movies to Trakt API")
-        logger.info(f"Sample movie data: {movies_data['movies'][:2] if movies_data['movies'] else 'No movies'}")
-        
         # Try the request with retry logic for rate limiting
         max_retries = 3
         for attempt in range(max_retries):
             result = self.trakt_auth.make_authenticated_request(username, endpoint, 'POST', movies_data)
             
             if result:
-                logger.info(f"Trakt API response: {result}")
                 return True
             else:
                 if attempt < max_retries - 1:
                     wait_time = (attempt + 1) * 2  # 2, 4, 6 seconds
-                    logger.warning(f"Trakt API failed, retrying in {wait_time} seconds (attempt {attempt + 1}/{max_retries})")
+                    print(f"⏳ Rate limited, retrying in {wait_time}s...", file=sys.stderr)
                     import time
                     time.sleep(wait_time)
                 else:
-                    logger.error("Trakt API returned no result after all retries")
+                    print(f"❌ Trakt API failed after {max_retries} attempts", file=sys.stderr)
                     return False
         
         return False

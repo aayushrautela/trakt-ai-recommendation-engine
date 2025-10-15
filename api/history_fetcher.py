@@ -25,8 +25,6 @@ class HistoryFetcher:
         days_back = self.get_days_back(time_period)
         start_date = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
         
-        logger.info(f"Fetching watch history for {username} from {start_date}")
-        
         # Fetch movie history with pagination
         all_history = []
         page = 1
@@ -42,7 +40,6 @@ class HistoryFetcher:
             )
             
             if not history_data:
-                logger.error(f"Failed to fetch history page {page} for {username}")
                 break
             
             if not history_data:  # Empty response
@@ -58,10 +55,9 @@ class HistoryFetcher:
             
             # Safety check to prevent infinite loops
             if page > 50:  # Max 5000 items
-                logger.warning(f"Reached maximum page limit for {username}")
                 break
         
-        logger.info(f"Fetched {len(all_history)} movies for {username}")
+        print(f"📊 Fetched {len(all_history)} movies from {time_period}")
         return all_history
     
     def extract_movie_info(self, history_item: Dict) -> Dict:
@@ -99,7 +95,6 @@ class HistoryFetcher:
                 processed_history.append(item)  # Keep original structure for compatibility
                 seen_movies.add(movie_key)
         
-        logger.info(f"Processed {len(processed_history)} unique movies for {username}")
         return processed_history
     
     def get_genre_stats(self, history: List[Dict]) -> Dict[str, int]:
@@ -132,5 +127,4 @@ class HistoryFetcher:
             if tmdb_id:
                 watched_ids.add(tmdb_id)
         
-        logger.info(f"Found {len(watched_ids)} unique watched movie TMDB IDs")
         return watched_ids
