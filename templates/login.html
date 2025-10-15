@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h1>Login Required</h1>
+    <p>To generate personalized movie recommendations, you need to connect your Trakt account.</p>
+    
+    <div class="status">
+        <a href="{{ auth_url }}" class="login-btn">Connect with Trakt</a>
+    </div>
+    
+    <p><small>
+        This app will access your watch history to generate personalized recommendations. 
+        Your data is stored securely and will only be used to improve your recommendations.
+    </small></p>
+</div>
+{% endblock %}
