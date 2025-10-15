@@ -94,7 +94,7 @@ def generate_list():
         selected_genres = data.get('genres', [])
         list_name = data.get('list_name', 'AI Recommendations')
         
-        print(f"🎯 Generating recommendations for {username}")
+        print(f"Generating recommendations for {username}")
         
         # Fetch watch history
         history = history_fetcher.get_filtered_history(username, time_period)
@@ -111,7 +111,7 @@ def generate_list():
         current_history = history.copy()  # Start with original history
         
         for attempt in range(max_retries):
-            print(f"🔄 Gemini attempt {attempt + 1}/{max_retries}")
+            print(f"Gemini attempt {attempt + 1}/{max_retries}")
             
             # Generate AI recommendations
             recommendations = recommendation_engine.analyze_watch_history(
@@ -134,13 +134,13 @@ def generate_list():
             
             if new_enriched_movies:
                 all_enriched_movies.extend(new_enriched_movies)
-                print(f"📊 Got {len(new_enriched_movies)} new movies this round")
+                print(f"Got {len(new_enriched_movies)} new movies this round")
             
             if len(all_enriched_movies) >= 20:
-                print(f"✅ Total: {len(all_enriched_movies)} movies - sufficient!")
+                print(f"Total: {len(all_enriched_movies)} movies - sufficient!")
                 break
             else:
-                print(f"⚠️ Need {20 - len(all_enriched_movies)} more movies")
+                print(f"Need {20 - len(all_enriched_movies)} more movies")
                 
                 if attempt < max_retries - 1:
                     # Add the new movies to history so Gemini won't suggest them again
@@ -155,9 +155,9 @@ def generate_list():
                         }
                         current_history.append(fake_history_item)
                     
-                    print(f"📝 Added {len(new_enriched_movies)} movies to history for next attempt")
+                    print(f"Added {len(new_enriched_movies)} movies to history for next attempt")
                 else:
-                    print(f"⚠️ Could only find {len(all_enriched_movies)} movies after {max_retries} attempts")
+                    print(f"Could only find {len(all_enriched_movies)} movies after {max_retries} attempts")
         
         if not all_enriched_movies:
             return jsonify({
@@ -185,7 +185,7 @@ def generate_list():
         }
         list_manager.store_user_config(username, config)
         
-        print(f"🎉 List generation completed successfully!")
+        print(f"List generation completed successfully!")
         
         return jsonify({
             "success": True,
@@ -195,7 +195,7 @@ def generate_list():
         })
         
     except Exception as e:
-        print(f"❌ Unexpected error: {e}", file=sys.stderr)
+        print(f"ERROR: Unexpected error: {e}", file=sys.stderr)
         return jsonify({
             "success": False,
             "error": "An unexpected error occurred. Please try again."
@@ -214,7 +214,7 @@ def logout():
         username = session['username']
         # Optionally delete stored tokens
         session.clear()
-        print(f"👋 User {username} logged out")
+        print(f"User {username} logged out")
     
     return redirect(url_for('index'))
 
@@ -238,7 +238,7 @@ def not_found(error):
 
 @app.errorhandler(500)
 def internal_error(error):
-    print(f"❌ Internal server error: {error}", file=sys.stderr)
+    print(f"ERROR: Internal server error: {error}", file=sys.stderr)
     return jsonify({"error": "Internal server error"}), 500
 
 # For local development

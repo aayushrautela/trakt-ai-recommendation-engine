@@ -30,28 +30,24 @@ class TraktListManager:
         list_id = self._find_list_by_name(username, list_name)
         
         if list_id:
-            # Clear existing list items while keeping the same list ID
-            print(f"🔄 Updating existing list '{list_name}'")
-            clear_success = self._clear_list_items(username, list_id)
-            if not clear_success:
-                print(f"⚠️  Failed to clear existing list items, but continuing...", file=sys.stderr)
+            # For existing lists, we'll replace all items in one operation
+            print(f"Updating existing list '{list_name}'")
+            success = self._replace_list_items(username, list_id, movies)
         else:
             # Create new list
             list_id = self._create_list(username, list_name)
             if not list_id:
-                print(f"❌ Failed to create list '{list_name}'", file=sys.stderr)
+                print(f"ERROR: Failed to create list '{list_name}'", file=sys.stderr)
                 return None
-            print(f"✨ Created new list '{list_name}'")
-        
-        # Add movies to list
-        success = self._add_movies_to_list(username, list_id, movies)
+            print(f"Created new list '{list_name}'")
+            success = self._add_movies_to_list(username, list_id, movies)
         
         if success:
             list_url = f"https://trakt.tv/users/{username}/lists/{list_id}"
-            print(f"🎬 Successfully added {len(movies)} movies to Trakt list")
+            print(f"Successfully updated list with {len(movies)} movies")
             return list_url
         else:
-            print(f"❌ Failed to add movies to Trakt list", file=sys.stderr)
+            print(f"ERROR: Failed to update Trakt list", file=sys.stderr)
             return None
     
     def _find_list_by_name(self, username: str, list_name: str) -> Optional[str]:
@@ -87,6 +83,71 @@ class TraktListManager:
             return str(result['ids']['trakt'])
         
         return None
+    
+    def _replace_list_items(self, username: str, list_id: str, movies: List[Dict]) -> bool:
+        """Replace all items in a list with new movies in one operation"""
+        try:
+            # First, get current items to remove
+            items_endpoint = f'/users/{username}/lists/{list_id}/items'
+            current_items = self.trakt_auth.make_authenticated_request(username, items_endpoint, 'GET')
+            
+            # Prepare removal data
+            movies_to_remove = []
+            if current_items:
+                for item in current_items:
+                    if item.get('type') == 'movie':
+                        movie_data = item.get('movie', {})
+                        if movie_data.get('ids', {}).get('trakt'):
+                            movies_to_remove.append({
+                                'ids': {'trakt': movie_data['ids']['trakt']}
+                            })
+                        elif movie_data.get('ids', {}).get('tmdb'):
+                            movies_to_remove.append({
+                                'ids': {'tmdb': movie_data['ids']['tmdb']}
+                            })
+                        elif movie_data.get('ids', {}).get('imdb'):
+                            movies_to_remove.append({
+                                'ids': {'imdb': movie_data['ids']['imdb']}
+                            })
+            
+            # Prepare new movies data
+            movies_data = {
+                'movies': []
+            }
+            
+            for movie in movies:
+                movie_item = {
+                    'ids': {
+                        'tmdb': movie.get('id')
+                    }
+                }
+                movies_data['movies'].append(movie_item)
+            
+            # If there are items to remove, do it first
+            if movies_to_remove:
+                remove_data = {'movies': movies_to_remove}
+                remove_endpoint = f'/users/{username}/lists/{list_id}/items/remove'
+                remove_result = self.trakt_auth.make_authenticated_request(
+                    username, remove_endpoint, 'POST', remove_data
+                )
+                
+                if not remove_result:
+                    print(f"WARNING: Failed to clear existing items, but continuing...", file=sys.stderr)
+            
+            # Add new movies
+            add_endpoint = f'/users/{username}/lists/{list_id}/items'
+            add_result = self.trakt_auth.make_authenticated_request(username, add_endpoint, 'POST', movies_data)
+            
+            if add_result:
+                print(f"Replaced list with {len(movies)} movies")
+                return True
+            else:
+                print(f"ERROR: Failed to add new movies", file=sys.stderr)
+                return False
+                
+        except Exception as e:
+            print(f"ERROR: Failed to replace list items: {e}", file=sys.stderr)
+            return False
     
     def _delete_list(self, username: str, list_id: str) -> bool:
         """Delete an entire list"""
@@ -158,15 +219,15 @@ class TraktListManager:
                 )
                 
                 if remove_result:
-                    print(f"🗑️  Cleared {len(movies_to_remove)} movies from list")
+                    print(f"Cleared {len(movies_to_remove)} movies from list")
                     return True
                 else:
-                    print(f"⚠️  Failed to clear list items", file=sys.stderr)
+                    print(f"WARNING: Failed to clear list items", file=sys.stderr)
             
             return True
             
         except Exception as e:
-            print(f"❌ Error clearing list: {e}", file=sys.stderr)
+            print(f"ERROR: Error clearing list: {e}", file=sys.stderr)
             return True  # Continue even if clear fails
     
     def _clear_list_items_individually(self, username: str, list_id: str) -> bool:
@@ -235,11 +296,11 @@ class TraktListManager:
             else:
                 if attempt < max_retries - 1:
                     wait_time = (attempt + 1) * 2  # 2, 4, 6 seconds
-                    print(f"⏳ Rate limited, retrying in {wait_time}s...", file=sys.stderr)
+                    print(f"Rate limited, retrying in {wait_time}s...", file=sys.stderr)
                     import time
                     time.sleep(wait_time)
                 else:
-                    print(f"❌ Trakt API failed after {max_retries} attempts", file=sys.stderr)
+                    print(f"ERROR: Trakt API failed after {max_retries} attempts", file=sys.stderr)
                     return False
         
         return False

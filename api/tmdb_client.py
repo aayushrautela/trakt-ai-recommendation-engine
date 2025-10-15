@@ -158,7 +158,7 @@ class TMDBClient:
         enriched_movies.sort(key=lambda x: x.get('popularity', 0), reverse=True)
         final_movies = enriched_movies[:20]
         
-        print(f"✅ Found {len(final_movies)} movies after filtering")
+        print(f"Found {len(final_movies)} movies after filtering")
         return final_movies
     
     def convert_to_trakt_slug(self, movie_data: Dict) -> str:

@@ -40,7 +40,7 @@ class RecommendationEngine:
             return recommendations
             
         except Exception as e:
-            print(f"❌ Gemini AI failed: {e}", file=sys.stderr)
+            print(f"ERROR: Gemini AI failed: {e}", file=sys.stderr)
             return []
     
     def _prepare_history_summary(self, watch_history: List[Dict]) -> str:
@@ -130,7 +130,7 @@ Do not include any explanations, introductions, or additional text. Just the mov
                 if '(' in line and ')' in line and any(c.isdigit() for c in line):
                     recommendations.append(line)
             
-            print(f"✅ Generated {len(recommendations)} AI recommendations")
+            print(f"Generated {len(recommendations)} AI recommendations")
             return recommendations
             
         except Exception as e:
