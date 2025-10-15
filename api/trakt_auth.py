@@ -171,15 +171,32 @@ class TraktAuth:
             'trakt-api-key': self.client_id
         }
         
+        # Log the request details
+        url = f'{self.base_url}{endpoint}'
+        print(f"TRAKT REQUEST: {method} {url}")
+        if data:
+            print(f"TRAKT REQUEST DATA: {json.dumps(data, indent=2)}")
+        
         try:
             if method == 'GET':
-                response = requests.get(f'{self.base_url}{endpoint}', headers=headers)
+                response = requests.get(url, headers=headers)
             elif method == 'POST':
-                response = requests.post(f'{self.base_url}{endpoint}', json=data, headers=headers)
+                response = requests.post(url, json=data, headers=headers)
             elif method == 'DELETE':
-                response = requests.delete(f'{self.base_url}{endpoint}', headers=headers)
+                response = requests.delete(url, headers=headers)
             else:
                 raise ValueError(f"Unsupported method: {method}")
+            
+            # Log the response details
+            print(f"TRAKT RESPONSE: {response.status_code}")
+            if response.content:
+                try:
+                    response_json = response.json()
+                    print(f"TRAKT RESPONSE DATA: {json.dumps(response_json, indent=2)}")
+                except:
+                    print(f"TRAKT RESPONSE TEXT: {response.text}")
+            else:
+                print("TRAKT RESPONSE: Empty response")
             
             response.raise_for_status()
             return response.json() if response.content else {}
