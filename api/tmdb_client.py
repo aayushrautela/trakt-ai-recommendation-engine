@@ -130,6 +130,7 @@ class TMDBClient:
     def enrich_movie_list(self, movie_titles: List[str], selected_genres: List[str] = None, watched_movie_ids: set = None) -> List[Dict]:
         """Enrich a list of movie titles with TMDB data and filter by genres and watched status"""
         enriched_movies = []
+        filtered_out_watched = 0
         
         for title in movie_titles:
             # Try to extract year from title if present
@@ -146,9 +147,13 @@ class TMDBClient:
             if movie_data:
                 # Check if this movie is already watched
                 if watched_movie_ids and movie_data.get('id') in watched_movie_ids:
+                    filtered_out_watched += 1
                     continue
                 
                 enriched_movies.append(movie_data)
+        
+        # DEBUG: Log filtering results
+        logger.info(f"DEBUG: Filtered out {filtered_out_watched} watched movies. Found {len(enriched_movies)} new movies")
         
         # Filter by genres if specified
         if selected_genres:
@@ -158,7 +163,9 @@ class TMDBClient:
         enriched_movies.sort(key=lambda x: x.get('popularity', 0), reverse=True)
         final_movies = enriched_movies[:20]
         
-        # Found movies after filtering
+        # DEBUG: Log final results
+        logger.info(f"DEBUG: Final enriched movies count: {len(final_movies)}")
+        
         return final_movies
     
     def convert_to_trakt_slug(self, movie_data: Dict) -> str:

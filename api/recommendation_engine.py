@@ -65,6 +65,9 @@ class RecommendationEngine:
                     movies_by_genre[genre_name] = []
                 movies_by_genre[genre_name].append(movie_title_year)
         
+        # DEBUG: Log watched movies count and sample
+        logger.info(f"DEBUG: Found {total_movies} watched movies. Sample: {all_watched_movies[:5]}")
+        
         # Create summary
         summary = f"User has watched {total_movies} movies recently. "
         summary += "Genre breakdown:\n"
@@ -125,6 +128,9 @@ Do not include any explanations, introductions, or additional text. Only return 
                         # Basic validation - should contain a year in parentheses
                         if '(' in item and ')' in item and any(c.isdigit() for c in item):
                             recommendations.append(item.strip())
+            
+            # DEBUG: Log recommendations count and sample
+            logger.info(f"DEBUG: Parsed {len(recommendations)} recommendations. Sample: {recommendations[:3]}")
             
             return recommendations
             

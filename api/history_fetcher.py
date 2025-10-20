@@ -127,4 +127,7 @@ class HistoryFetcher:
             if tmdb_id:
                 watched_ids.add(tmdb_id)
         
+        # DEBUG: Log watched movie IDs count and sample
+        logger.info(f"DEBUG: Extracted {len(watched_ids)} watched TMDB IDs. Sample: {list(watched_ids)[:5]}")
+        
         return watched_ids
