@@ -26,15 +26,5 @@
     "api/index.py": {
       "maxDuration": 300
     }
-  },
-  "excludeFiles": [
-    "**/__pycache__/**",
-    "**/*.pyc",
-    "**/test_*",
-    "**/tests/**",
-    "**/.*",
-    "**/README.md",
-    "**/DEPLOYMENT.md",
-    "**/PROJECT_OVERVIEW.md"
-  ]
+  }
 }
