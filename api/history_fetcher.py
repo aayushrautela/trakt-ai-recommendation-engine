@@ -54,7 +54,7 @@ class HistoryFetcher:
             page += 1
             
             # Safety check to prevent infinite loops
-            if page > 3:  # Max 300 items (3 pages * 100 per page)
+            if page > 50:  # Max 5000 items
                 break
         
         # Fetched movies from history

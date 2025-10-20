@@ -65,18 +65,23 @@ class RecommendationEngine:
         
         # Group movies by genre and extract key information
         movies_by_genre = {}
+        all_watched_movies = []
         total_movies = len(watch_history)
         
         for movie in watch_history:
             genres = movie.get('movie', {}).get('genres', [])
             title = movie.get('movie', {}).get('title', 'Unknown')
             year = movie.get('movie', {}).get('year', 'Unknown')
+            movie_title_year = f"{title} ({year})"
+            
+            # Add to all watched movies list
+            all_watched_movies.append(movie_title_year)
             
             for genre in genres:
                 genre_name = genre.get('name', 'Unknown')
                 if genre_name not in movies_by_genre:
                     movies_by_genre[genre_name] = []
-                movies_by_genre[genre_name].append(f"{title} ({year})")
+                movies_by_genre[genre_name].append(movie_title_year)
         
         # Create summary
         summary = f"User has watched {total_movies} movies recently. "
@@ -84,6 +89,10 @@ class RecommendationEngine:
         
         for genre, movies in movies_by_genre.items():
             summary += f"- {genre}: {len(movies)} movies\n"
+        
+        # Add the complete list of watched movies
+        summary += f"\nComplete list of watched movies (DO NOT recommend these):\n"
+        summary += ", ".join(all_watched_movies)
         
         return summary
     
@@ -106,7 +115,7 @@ Instructions:
    - 70% similar to what they've watched (same genres, themes, directors, or similar appeal)
    - 30% slightly different to help them discover new content (different but complementary genres or styles)
 3. Include movies from different decades (not just recent releases)
-4. Avoid suggesting movies they've already watched{genre_constraint}
+4. CRITICAL: Do NOT suggest any movies from the "Complete list of watched movies" provided above{genre_constraint}
 
 Please respond with a valid JSON array containing exactly 50 movie recommendations in this format:
 [
