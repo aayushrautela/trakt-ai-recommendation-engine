@@ -83,7 +83,7 @@ class RecommendationEngine:
         summary += "Genre breakdown:\n"
         
         for genre, movies in movies_by_genre.items():
-            summary += f"- {genre}: {len(movies)} movies (e.g., {', '.join(movies[:3])})\n"
+            summary += f"- {genre}: {len(movies)} movies\n"
         
         return summary
     
@@ -105,49 +105,67 @@ Instructions:
 2. Suggest 50 movies total with the following mix:
    - 70% similar to what they've watched (same genres, themes, directors, or similar appeal)
    - 30% slightly different to help them discover new content (different but complementary genres or styles)
-3. Focus on well-known, popular movies that are likely to be in movie databases
-4. Include movies from different decades (not just recent releases)
-5. Avoid suggesting movies they've already watched
-6. Ensure recommendations are accessible and mainstream enough to be found in databases{genre_constraint}
+3. Include movies from different decades (not just recent releases)
+4. Avoid suggesting movies they've already watched{genre_constraint}
 
-Please respond with ONLY the movie titles, one per line, in this format:
-Movie Title (Year)
+Please respond with a valid JSON array containing exactly 50 movie recommendations in this format:
+[
+  "Movie Title (Year)",
+  "Another Movie (Year)",
+  ...
+]
 
-Example:
-The Dark Knight (2008)
-Inception (2010)
-Pulp Fiction (1994)
-
-Do not include any explanations, introductions, or additional text. Just the movie titles with years.
+Do not include any explanations, introductions, or additional text. Only return the JSON array.
 """
         
         return prompt
     
     def _parse_gemini_response(self, response_text: str) -> List[str]:
-        """Parse Gemini response to extract movie titles"""
+        """Parse Gemini response to extract movie titles from JSON"""
         recommendations = []
         
         try:
-            lines = response_text.strip().split('\n')
+            # Try to parse as JSON first
+            response_data = json.loads(response_text.strip())
             
-            for line in lines:
-                line = line.strip()
-                
-                # Skip empty lines and lines that don't look like movie titles
-                if not line or line.startswith('#') or line.startswith('*'):
-                    continue
-                
-                # Remove numbering if present (e.g., "1. Movie Title (Year)")
-                if '. ' in line and line.split('. ')[0].isdigit():
-                    line = line.split('. ', 1)[1]
-                
-                # Basic validation - should contain a year in parentheses
-                if '(' in line and ')' in line and any(c.isdigit() for c in line):
-                    recommendations.append(line)
+            if isinstance(response_data, list):
+                for item in response_data:
+                    if isinstance(item, str) and item.strip():
+                        # Basic validation - should contain a year in parentheses
+                        if '(' in item and ')' in item and any(c.isdigit() for c in item):
+                            recommendations.append(item.strip())
             
-            # Generated AI recommendations
             return recommendations
             
+        except json.JSONDecodeError:
+            # Fallback to line-by-line parsing if JSON parsing fails
+            try:
+                lines = response_text.strip().split('\n')
+                
+                for line in lines:
+                    line = line.strip()
+                    
+                    # Skip empty lines and lines that don't look like movie titles
+                    if not line or line.startswith('#') or line.startswith('*'):
+                        continue
+                    
+                    # Remove numbering if present (e.g., "1. Movie Title (Year)")
+                    if '. ' in line and line.split('. ')[0].isdigit():
+                        line = line.split('. ', 1)[1]
+                    
+                    # Remove JSON array brackets and quotes
+                    line = line.strip('[]",')
+                    
+                    # Basic validation - should contain a year in parentheses
+                    if '(' in line and ')' in line and any(c.isdigit() for c in line):
+                        recommendations.append(line)
+                
+                return recommendations
+                
+            except Exception as e:
+                logger.error(f"Failed to parse Gemini response (fallback): {e}")
+                return []
+        
         except Exception as e:
             logger.error(f"Failed to parse Gemini response: {e}")
             return []
