@@ -90,7 +90,7 @@ class RecommendationEngine:
         for genre, movies in movies_by_genre.items():
             summary += f"- {genre}: {len(movies)} movies\n"
         
-        # Add the complete list of watched movies
+        # Include all watched movies from the selected time period
         summary += f"\nComplete list of watched movies (DO NOT recommend these):\n"
         summary += ", ".join(all_watched_movies)
         
