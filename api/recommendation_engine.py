@@ -1,42 +1,20 @@
 import os
-import sys
 import json
 import logging
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
-
-# Suppress only Google AI library warnings during import
-stderr_original = sys.stderr
-sys.stderr = open(os.devnull, 'w')
-
-try:
-    import google.generativeai as genai
-finally:
-    sys.stderr = stderr_original
+from gemini_client import GeminiClient
 
 logger = logging.getLogger(__name__)
 
 class RecommendationEngine:
     def __init__(self):
-        self.api_key = os.getenv('GEMINI_API_KEY')
-        if self.api_key:
-            # Suppress only during Google AI operations
-            stderr_original = sys.stderr
-            sys.stderr = open(os.devnull, 'w')
-            
-            try:
-                genai.configure(api_key=self.api_key)
-                self.model = genai.GenerativeModel('gemini-2.5-flash')
-            finally:
-                sys.stderr = stderr_original
-        else:
-            self.model = None
-            logger.error("GEMINI_API_KEY not found")
+        self.gemini_client = GeminiClient()
     
     def analyze_watch_history(self, watch_history: List[Dict], time_period: str, selected_genres: List[str] = None) -> List[str]:
         """Analyze watch history and generate movie recommendations using Gemini AI"""
-        if not self.model:
-            logger.error("Gemini model not initialized")
+        if not self.gemini_client.api_key:
+            logger.error("Gemini API key not found")
             return []
         
         try:
@@ -47,15 +25,19 @@ class RecommendationEngine:
             prompt = self._create_recommendation_prompt(history_summary, time_period, selected_genres)
             
             # Generate recommendations
-            response = self.model.generate_content(prompt)
+            response_text = self.gemini_client.generate_content(prompt)
+            
+            if not response_text:
+                logger.error("Empty response from Gemini")
+                return []
             
             # Parse the response to extract movie titles
-            recommendations = self._parse_gemini_response(response.text)
+            recommendations = self._parse_gemini_response(response_text)
             
             return recommendations
             
         except Exception as e:
-            print(f"ERROR: Gemini AI failed: {e}", file=sys.stderr)
+            logger.error(f"Gemini AI failed: {e}")
             return []
     
     def _prepare_history_summary(self, watch_history: List[Dict]) -> str:
