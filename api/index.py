@@ -15,6 +15,7 @@ from recommendation_engine import RecommendationEngine
 from tmdb_client import TMDBClient
 from trakt_list import TraktListManager
 from update_lists import handle_cron_update
+from recommendation_service import RecommendationService
 
 # Load environment variables
 load_dotenv()
@@ -33,6 +34,7 @@ history_fetcher = HistoryFetcher()
 recommendation_engine = RecommendationEngine()
 tmdb_client = TMDBClient()
 list_manager = TraktListManager()
+recommendation_service = RecommendationService()
 
 @app.route('/')
 def index():
@@ -94,84 +96,21 @@ def generate_list():
         selected_genres = data.get('genres', [])
         list_name = data.get('list_name', 'AI Recommendations')
         
-        # Fetch watch history for AI analysis (time-period limited)
-        analysis_history = history_fetcher.get_filtered_history(username, time_period)
+        # Generate recommendations using the sophisticated service
+        enriched_movies, metadata = recommendation_service.generate_recommendations(
+            username=username,
+            time_period=time_period,
+            selected_genres=selected_genres,
+            target_count=20,
+            max_retries=3
+        )
         
-        if not analysis_history:
-            return jsonify({
-                "success": False, 
-                "error": f"No watch history found for the selected time period ({time_period}). Please watch some movies first!"
-            }), 400
-        
-        # Fetch complete watch history for filtering (no date limit)
-        complete_history = history_fetcher.fetch_complete_watch_history(username)
-        
-        # Generate AI recommendations with aggressive retry logic to get 20 movies
-        all_enriched_movies = []
-        max_retries = 3
-        current_history = analysis_history.copy()  # Start with time-period limited history for AI
-        used_movie_ids = set()  # Track used movie IDs to prevent duplicates
-        
-        for attempt in range(max_retries):
-            # Generate AI recommendations (now asks for 50 movies)
-            recommendations = recommendation_engine.analyze_watch_history(
-                current_history, time_period, selected_genres
-            )
-            
-            if not recommendations:
-                if attempt == max_retries - 1:
-                    return jsonify({
-                        "success": False,
-                        "error": "Failed to generate recommendations after multiple attempts."
-                    }), 500
-                continue
-            
-            # Get watched movie IDs to filter out (from COMPLETE history)
-            watched_movie_ids = history_fetcher.get_watched_movie_ids(complete_history)
-            
-            # Enrich with TMDB data and filter out watched movies
-            new_enriched_movies = tmdb_client.enrich_movie_list(recommendations, selected_genres, watched_movie_ids)
-            
-            if new_enriched_movies:
-                # Filter out movies we've already used
-                unique_new_movies = []
-                for movie in new_enriched_movies:
-                    movie_id = movie.get('id')
-                    if movie_id and movie_id not in used_movie_ids:
-                        unique_new_movies.append(movie)
-                        used_movie_ids.add(movie_id)
-                
-                all_enriched_movies.extend(unique_new_movies)
-            
-            if len(all_enriched_movies) >= 20:
-                break
-            else:
-                if attempt < max_retries - 1:
-                    # Add ALL Gemini recommendations to analysis history so it won't suggest them again
-                    for recommendation in recommendations:
-                        # Parse the recommendation to extract title and year
-                        if '(' in recommendation and ')' in recommendation:
-                            title = recommendation.split('(')[0].strip()
-                            year = recommendation.split('(')[1].split(')')[0].strip()
-                            
-                            fake_history_item = {
-                                'movie': {
-                                    'title': title,
-                                    'year': year,
-                                    'ids': {'tmdb': None},  # No TMDB ID since it wasn't found
-                                    'genres': []  # No genre info from raw text
-                                }
-                            }
-                            current_history.append(fake_history_item)
-        
-        if not all_enriched_movies:
+        if not enriched_movies:
+            error_msg = metadata.get('error', 'Failed to generate any recommendations.')
             return jsonify({
                 "success": False,
-                "error": "Failed to generate any recommendations."
+                "error": error_msg
             }), 500
-        
-        # Use only the first 20 movies
-        enriched_movies = all_enriched_movies[:20]
         
         # Create/update Trakt list
         list_url = list_manager.create_or_update_list(username, list_name, enriched_movies)
