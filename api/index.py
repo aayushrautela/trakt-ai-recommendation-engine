@@ -41,6 +41,13 @@ def index():
     """Main page - show form if authenticated, login prompt if not"""
     return render_template('index.html')
 
+@app.route('/dashboard')
+def dashboard():
+    """Dashboard page - show user's lists if authenticated"""
+    if 'username' not in session:
+        return redirect(url_for('index'))
+    return render_template('dashboard.html')
+
 @app.route('/login')
 def login():
     """Redirect to Trakt OAuth"""
@@ -121,13 +128,13 @@ def generate_list():
                 "error": "Failed to create/update list on Trakt. Please try again."
             }), 500
         
-        # Store user configuration for nightly updates
+        # Store list configuration for nightly updates
         config = {
             'time_period': time_period,
             'genres': selected_genres,
             'list_name': list_name
         }
-        list_manager.store_user_config(username, config)
+        list_manager.store_list_config(username, list_name, config)
         
         print(f"✅ Successfully generated {len(enriched_movies)} movie recommendations")
         
@@ -175,6 +182,200 @@ def refresh_token():
         return jsonify({"success": True, "message": "Token is valid"})
     else:
         return jsonify({"success": False, "error": "Token refresh failed"}), 401
+
+@app.route('/api/lists', methods=['GET'])
+def get_user_lists():
+    """Get all lists for the current user"""
+    if 'username' not in session:
+        return jsonify({"success": False, "error": "Not authenticated"}), 401
+    
+    username = session['username']
+    lists = list_manager.get_all_user_lists(username)
+    
+    return jsonify({
+        "success": True,
+        "lists": lists
+    })
+
+@app.route('/api/lists/<list_name>', methods=['GET'])
+def get_list_details(list_name):
+    """Get details for a specific list"""
+    if 'username' not in session:
+        return jsonify({"success": False, "error": "Not authenticated"}), 401
+    
+    username = session['username']
+    config = list_manager.get_list_config(username, list_name)
+    
+    if not config:
+        return jsonify({"success": False, "error": "List not found"}), 404
+    
+    return jsonify({
+        "success": True,
+        "list_name": list_name,
+        "config": config
+    })
+
+@app.route('/api/lists/<list_name>', methods=['PUT'])
+def update_list(list_name):
+    """Update an existing list"""
+    if 'username' not in session:
+        return jsonify({"success": False, "error": "Not authenticated"}), 401
+    
+    try:
+        username = session['username']
+        data = request.get_json()
+        
+        # Extract parameters
+        time_period = data.get('time_period', '1 month')
+        selected_genres = data.get('genres', [])
+        new_list_name = data.get('list_name', list_name)
+        
+        # Generate new recommendations
+        enriched_movies, metadata = recommendation_service.generate_recommendations(
+            username=username,
+            time_period=time_period,
+            selected_genres=selected_genres,
+            target_count=20,
+            max_retries=3,
+            min_quality_score=5.0
+        )
+        
+        if not enriched_movies:
+            error_msg = metadata.get('error', 'Failed to generate any recommendations.')
+            return jsonify({
+                "success": False,
+                "error": error_msg
+            }), 500
+        
+        # Update the list
+        list_url = list_manager.create_or_update_list(username, new_list_name, enriched_movies)
+        
+        if not list_url:
+            return jsonify({
+                "success": False,
+                "error": "Failed to update list on Trakt. Please try again."
+            }), 500
+        
+        # Update list configuration
+        config = {
+            'time_period': time_period,
+            'genres': selected_genres,
+            'list_name': new_list_name
+        }
+        list_manager.store_list_config(username, new_list_name, config)
+        
+        # If list name changed, delete old config
+        if new_list_name != list_name:
+            list_manager.delete_list_config(username, list_name)
+        
+        return jsonify({
+            "success": True,
+            "list_url": list_url,
+            "list_name": new_list_name,
+            "movies_count": len(enriched_movies)
+        })
+        
+    except Exception as e:
+        print(f"ERROR: Unexpected error updating list: {e}", file=sys.stderr)
+        return jsonify({
+            "success": False,
+            "error": "An unexpected error occurred. Please try again."
+        }), 500
+
+@app.route('/api/lists/<list_name>', methods=['DELETE'])
+def delete_list(list_name):
+    """Delete a list"""
+    if 'username' not in session:
+        return jsonify({"success": False, "error": "Not authenticated"}), 401
+    
+    try:
+        username = session['username']
+        
+        # Delete from Trakt (find and delete the actual list)
+        list_id = list_manager._find_list_by_name(username, list_name)
+        if list_id:
+            # Delete the actual Trakt list
+            success = list_manager._delete_list(username, list_id)
+            if not success:
+                return jsonify({
+                    "success": False,
+                    "error": "Failed to delete list from Trakt"
+                }), 500
+        
+        # Delete configuration
+        list_manager.delete_list_config(username, list_name)
+        
+        return jsonify({
+            "success": True,
+            "message": f"List '{list_name}' deleted successfully"
+        })
+        
+    except Exception as e:
+        print(f"ERROR: Unexpected error deleting list: {e}", file=sys.stderr)
+        return jsonify({
+            "success": False,
+            "error": "An unexpected error occurred. Please try again."
+        }), 500
+
+@app.route('/api/cache/refresh', methods=['POST'])
+def refresh_cache():
+    """Manually refresh user's history cache"""
+    if 'username' not in session:
+        return jsonify({"success": False, "error": "Not authenticated"}), 401
+    
+    try:
+        username = session['username']
+        
+        # Update history cache incrementally
+        success = history_fetcher.update_history_incrementally(username)
+        
+        if success:
+            return jsonify({
+                "success": True,
+                "message": "History cache refreshed successfully"
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Failed to refresh cache"
+            }), 500
+            
+    except Exception as e:
+        print(f"ERROR: Unexpected error refreshing cache: {e}", file=sys.stderr)
+        return jsonify({
+            "success": False,
+            "error": "An unexpected error occurred. Please try again."
+        }), 500
+
+@app.route('/api/cache/clear', methods=['POST'])
+def clear_cache():
+    """Clear user's history cache"""
+    if 'username' not in session:
+        return jsonify({"success": False, "error": "Not authenticated"}), 401
+    
+    try:
+        username = session['username']
+        
+        # Clear history cache
+        success = list_manager.clear_user_history_cache(username)
+        
+        if success:
+            return jsonify({
+                "success": True,
+                "message": "History cache cleared successfully"
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Failed to clear cache"
+            }), 500
+            
+    except Exception as e:
+        print(f"ERROR: Unexpected error clearing cache: {e}", file=sys.stderr)
+        return jsonify({
+            "success": False,
+            "error": "An unexpected error occurred. Please try again."
+        }), 500
 
 @app.errorhandler(404)
 def not_found(error):

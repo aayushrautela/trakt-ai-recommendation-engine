@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import time
 import redis
 import logging
 from typing import List, Dict, Optional
@@ -332,6 +333,128 @@ class TraktListManager:
             return True
         except Exception as e:
             print(f"❌ Failed to store config: {e}", file=sys.stderr)
+            return False
+    
+    def store_list_config(self, username: str, list_name: str, config: Dict) -> bool:
+        """Store configuration for a specific list"""
+        try:
+            list_key = f'{self.namespace}:list_config:{username}:{list_name}'
+            self.redis_client.setex(list_key, 86400 * 30, json.dumps(config))  # 30 days expiry
+            return True
+        except Exception as e:
+            print(f"❌ Failed to store list config: {e}", file=sys.stderr)
+            return False
+    
+    def get_list_config(self, username: str, list_name: str) -> Optional[Dict]:
+        """Get configuration for a specific list"""
+        try:
+            list_key = f'{self.namespace}:list_config:{username}:{list_name}'
+            config_data = self.redis_client.get(list_key)
+            if config_data:
+                return json.loads(config_data)
+        except Exception as e:
+            print(f"❌ Failed to get list config: {e}", file=sys.stderr)
+        return None
+    
+    def get_all_user_lists(self, username: str) -> List[Dict]:
+        """Get all lists for a user"""
+        try:
+            lists = []
+            pattern = f'{self.namespace}:list_config:{username}:*'
+            
+            for key in self.redis_client.scan_iter(match=pattern):
+                list_name = key.replace(f'{self.namespace}:list_config:{username}:', '')
+                config_data = self.redis_client.get(key)
+                if config_data:
+                    config = json.loads(config_data)
+                    lists.append({
+                        'name': list_name,
+                        'config': config,
+                        'list_url': f"https://trakt.tv/users/{username}/lists/{list_name.replace(' ', '-').lower()}"
+                    })
+            
+            return lists
+        except Exception as e:
+            print(f"❌ Failed to get user lists: {e}", file=sys.stderr)
+            return []
+    
+    def delete_list_config(self, username: str, list_name: str) -> bool:
+        """Delete configuration for a specific list"""
+        try:
+            list_key = f'{self.namespace}:list_config:{username}:{list_name}'
+            self.redis_client.delete(list_key)
+            return True
+        except Exception as e:
+            print(f"❌ Failed to delete list config: {e}", file=sys.stderr)
+            return False
+    
+    def store_user_history(self, username: str, history: List[Dict], last_fetch_time: str) -> bool:
+        """Store user's watch history in Redis cache"""
+        try:
+            history_key = f'{self.namespace}:user_history:{username}'
+            cache_data = {
+                'history': history,
+                'last_fetch_time': last_fetch_time,
+                'cached_at': time.time()
+            }
+            # Cache for 7 days
+            self.redis_client.setex(history_key, 86400 * 7, json.dumps(cache_data))
+            return True
+        except Exception as e:
+            print(f"❌ Failed to store user history: {e}", file=sys.stderr)
+            return False
+    
+    def get_user_history_cache(self, username: str) -> Optional[Dict]:
+        """Get cached user history from Redis"""
+        try:
+            history_key = f'{self.namespace}:user_history:{username}'
+            cache_data = self.redis_client.get(history_key)
+            if cache_data:
+                return json.loads(cache_data)
+        except Exception as e:
+            print(f"❌ Failed to get user history cache: {e}", file=sys.stderr)
+        return None
+    
+    def update_user_history_cache(self, username: str, new_history: List[Dict], last_fetch_time: str) -> bool:
+        """Update cached history with new entries"""
+        try:
+            # Get existing cache
+            existing_cache = self.get_user_history_cache(username)
+            if existing_cache:
+                # Merge with existing history (avoid duplicates)
+                existing_history = existing_cache.get('history', [])
+                existing_movie_ids = {item.get('movie', {}).get('ids', {}).get('trakt') for item in existing_history}
+                
+                # Add only new movies
+                for new_item in new_history:
+                    movie_id = new_item.get('movie', {}).get('ids', {}).get('trakt')
+                    if movie_id and movie_id not in existing_movie_ids:
+                        existing_history.append(new_item)
+                
+                # Update cache
+                cache_data = {
+                    'history': existing_history,
+                    'last_fetch_time': last_fetch_time,
+                    'cached_at': time.time()
+                }
+                history_key = f'{self.namespace}:user_history:{username}'
+                self.redis_client.setex(history_key, 86400 * 7, json.dumps(cache_data))
+                return True
+            else:
+                # No existing cache, store new history
+                return self.store_user_history(username, new_history, last_fetch_time)
+        except Exception as e:
+            print(f"❌ Failed to update user history cache: {e}", file=sys.stderr)
+            return False
+    
+    def clear_user_history_cache(self, username: str) -> bool:
+        """Clear cached history for a user"""
+        try:
+            history_key = f'{self.namespace}:user_history:{username}'
+            self.redis_client.delete(history_key)
+            return True
+        except Exception as e:
+            print(f"❌ Failed to clear user history cache: {e}", file=sys.stderr)
             return False
     
     def get_user_config(self, username: str) -> Optional[Dict]:
