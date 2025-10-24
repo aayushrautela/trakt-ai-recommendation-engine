@@ -3,7 +3,7 @@ body {
     line-height: 1.6;
     margin: 0;
     padding: 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #ffffff;
     min-height: 100vh;
 }
 
@@ -16,9 +16,10 @@ body {
 .card {
     background: white;
     border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     padding: 2rem;
     margin: 2rem 0;
+    border: 1px solid #e9ecef;
 }
 
 h1 {
@@ -161,7 +162,7 @@ select:focus, input[type="text"]:focus {
     max-width: 1200px;
     margin: 0 auto;
     padding: 2rem;
-    background: #f8f9fa;
+    background: #ffffff;
     min-height: 100vh;
 }
 
@@ -456,22 +457,48 @@ select:focus, input[type="text"]:focus {
 
 .loading {
     text-align: center;
-    padding: 40px;
-    color: #666;
+    padding: 3rem;
+    color: #6c757d;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin: 2rem 0;
+}
+
+.loading .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+.loading span {
+    display: block;
+    font-size: 1rem;
+    color: #6c757d;
 }
 
 /* Welcome Styles */
 .welcome {
     text-align: center;
-    padding: 40px 20px;
+    padding: 3rem 2rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin: 2rem 0;
 }
 
 .welcome h2 {
-    margin-bottom: 10px;
-    color: #333;
+    margin-bottom: 1rem;
+    color: #2c3e50;
+    font-size: 1.75rem;
 }
 
 .welcome p {
-    margin-bottom: 20px;
-    color: #666;
+    margin-bottom: 2rem;
+    color: #6c757d;
+    font-size: 1.1rem;
 }
