@@ -19,6 +19,15 @@
         </div>
     </div>
     
+    <!-- Full Screen Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h3 id="loadingTitle">Processing...</h3>
+            <p id="loadingMessage">Please wait while we process your request</p>
+        </div>
+    </div>
+    
     <!-- Create/Edit List Modal -->
     <div id="listModal" class="modal-overlay" style="display: none;">
         <div class="modal-container">
@@ -124,9 +133,12 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function loadUserLists() {
+    showLoading('Loading your lists...', 'Fetching your movie recommendation lists');
+    
     fetch('/api/lists')
         .then(response => response.json())
         .then(data => {
+            hideLoading();
             if (data.success) {
                 displayLists(data.lists);
             } else {
@@ -134,6 +146,7 @@ function loadUserLists() {
             }
         })
         .catch(error => {
+            hideLoading();
             showError('Error loading lists: ' + error.message);
         });
 }
@@ -220,14 +233,16 @@ function handleFormSubmit(e) {
     const data = Object.fromEntries(formData.entries());
     data.genres = formData.getAll('genres');
     
-    const submitBtn = document.getElementById('submitBtn');
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Processing...';
-    
-    const url = currentEditingList ? 
+    const isEditing = currentEditingList !== null;
+    const url = isEditing ? 
         `/api/lists/${encodeURIComponent(currentEditingList)}` : 
         '/api/generate-list';
-    const method = currentEditingList ? 'PUT' : 'POST';
+    const method = isEditing ? 'PUT' : 'POST';
+    
+    showLoading(
+        isEditing ? 'Updating list...' : 'Creating list...',
+        isEditing ? 'Updating your movie list' : 'Generating AI recommendations for your new list'
+    );
     
     fetch(url, {
         method: method,
@@ -238,20 +253,18 @@ function handleFormSubmit(e) {
     })
     .then(response => response.json())
     .then(result => {
+        hideLoading();
         if (result.success) {
             closeModal();
             loadUserLists(); // Refresh the lists
-            showSuccess(currentEditingList ? 'List updated successfully!' : 'List created successfully!');
+            showSuccess(isEditing ? 'List updated successfully!' : 'List created successfully!');
         } else {
             showError(result.error);
         }
     })
     .catch(error => {
+        hideLoading();
         showError('Error: ' + error.message);
-    })
-    .finally(() => {
-        submitBtn.disabled = false;
-        submitBtn.textContent = currentEditingList ? 'Update List' : 'Create List';
     });
 }
 
@@ -260,11 +273,14 @@ function deleteList(listName) {
         return;
     }
     
+    showLoading('Deleting list...', 'Removing list from Trakt and clearing configuration');
+    
     fetch(`/api/lists/${encodeURIComponent(listName)}`, {
         method: 'DELETE'
     })
     .then(response => response.json())
     .then(result => {
+        hideLoading();
         if (result.success) {
             loadUserLists(); // Refresh the lists
             showSuccess('List deleted successfully!');
@@ -273,6 +289,7 @@ function deleteList(listName) {
         }
     })
     .catch(error => {
+        hideLoading();
         showError('Error deleting list: ' + error.message);
     });
 }
@@ -285,6 +302,17 @@ function showSuccess(message) {
 function showError(message) {
     // You can implement a toast notification here
     alert('Error: ' + message);
+}
+
+// Loading overlay functions
+function showLoading(title, message) {
+    document.getElementById('loadingTitle').textContent = title;
+    document.getElementById('loadingMessage').textContent = message;
+    document.getElementById('loadingOverlay').style.display = 'flex';
+}
+
+function hideLoading() {
+    document.getElementById('loadingOverlay').style.display = 'none';
 }
 </script>
 {% endblock %}
