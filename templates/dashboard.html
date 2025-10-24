@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="header">
+        <h1>My AI Movie Lists</h1>
+        <p>Manage your personalized movie recommendation lists</p>
+        <button id="createListBtn" class="btn btn-primary">Create New List</button>
+    </div>
+    
+    <div id="listsContainer" class="lists-container">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <span>Loading your lists...</span>
+        </div>
+    </div>
+    
+    <!-- Create/Edit List Modal -->
+    <div id="listModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Create New List</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="listForm">
+                    <div class="form-group">
+                        <label for="list_name">List Name:</label>
+                        <input type="text" id="list_name" name="list_name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="time_period">Time Period:</label>
+                        <select id="time_period" name="time_period" required>
+                            <option value="1 day">Last 1 day</option>
+                            <option value="1 week" selected>Last 1 week</option>
+                            <option value="1 month">Last 1 month</option>
+                            <option value="3 months">Last 3 months</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="genres">Genres (optional):</label>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="action" name="genres" value="action">
+                                <label for="action">Action</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="adventure" name="genres" value="adventure">
+                                <label for="adventure">Adventure</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="comedy" name="genres" value="comedy">
+                                <label for="comedy">Comedy</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="drama" name="genres" value="drama">
+                                <label for="drama">Drama</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="horror" name="genres" value="horror">
+                                <label for="horror">Horror</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="romance" name="genres" value="romance">
+                                <label for="romance">Romance</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="thriller" name="genres" value="thriller">
+                                <label for="thriller">Thriller</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="science fiction" name="genres" value="science fiction">
+                                <label for="science fiction">Sci-Fi</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="fantasy" name="genres" value="fantasy">
+                                <label for="fantasy">Fantasy</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="animation" name="genres" value="animation">
+                                <label for="animation">Animation</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" id="submitBtn">Create List</button>
+                        <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentEditingList = null;
+
+// Load user lists on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadUserLists();
+    
+    // Modal event listeners
+    document.getElementById('createListBtn').addEventListener('click', openCreateModal);
+    document.querySelector('.close').addEventListener('click', closeModal);
+    document.getElementById('cancelBtn').addEventListener('click', closeModal);
+    document.getElementById('listForm').addEventListener('submit', handleFormSubmit);
+    
+    // Close modal when clicking outside
+    window.addEventListener('click', function(event) {
+        const modal = document.getElementById('listModal');
+        if (event.target === modal) {
+            closeModal();
+        }
+    });
+});
+
+function loadUserLists() {
+    fetch('/api/lists')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayLists(data.lists);
+            } else {
+                showError('Failed to load lists: ' + data.error);
+            }
+        })
+        .catch(error => {
+            showError('Error loading lists: ' + error.message);
+        });
+}
+
+function displayLists(lists) {
+    const container = document.getElementById('listsContainer');
+    
+    if (lists.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <h3>No lists yet</h3>
+                <p>Create your first AI-powered movie list to get started!</p>
+                <button class="btn btn-primary" onclick="openCreateModal()">Create Your First List</button>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = lists.map(list => `
+        <div class="list-card">
+            <div class="list-header">
+                <h3>${list.name}</h3>
+                <div class="list-actions">
+                    <button class="btn btn-sm btn-secondary" onclick="editList('${list.name}')">Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteList('${list.name}')">Delete</button>
+                </div>
+            </div>
+            <div class="list-details">
+                <p><strong>Time Period:</strong> ${list.config.time_period}</p>
+                <p><strong>Genres:</strong> ${list.config.genres.length > 0 ? list.config.genres.join(', ') : 'All genres'}</p>
+                <p><strong>Last Updated:</strong> Auto-updated nightly</p>
+            </div>
+            <div class="list-footer">
+                <a href="${list.list_url}" target="_blank" class="btn btn-primary">View on Trakt</a>
+            </div>
+        </div>
+    `).join('');
+}
+
+function openCreateModal() {
+    currentEditingList = null;
+    document.getElementById('modalTitle').textContent = 'Create New List';
+    document.getElementById('listForm').reset();
+    document.getElementById('submitBtn').textContent = 'Create List';
+    document.getElementById('listModal').style.display = 'block';
+}
+
+function editList(listName) {
+    currentEditingList = listName;
+    document.getElementById('modalTitle').textContent = 'Edit List';
+    document.getElementById('submitBtn').textContent = 'Update List';
+    
+    // Load list details
+    fetch(`/api/lists/${encodeURIComponent(listName)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('list_name').value = data.config.list_name;
+                document.getElementById('time_period').value = data.config.time_period;
+                
+                // Set genres
+                document.querySelectorAll('input[name="genres"]').forEach(checkbox => {
+                    checkbox.checked = data.config.genres.includes(checkbox.value);
+                });
+                
+                document.getElementById('listModal').style.display = 'block';
+            } else {
+                showError('Failed to load list details: ' + data.error);
+            }
+        })
+        .catch(error => {
+            showError('Error loading list details: ' + error.message);
+        });
+}
+
+function closeModal() {
+    document.getElementById('listModal').style.display = 'none';
+    currentEditingList = null;
+}
+
+function handleFormSubmit(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+    data.genres = formData.getAll('genres');
+    
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Processing...';
+    
+    const url = currentEditingList ? 
+        `/api/lists/${encodeURIComponent(currentEditingList)}` : 
+        '/api/generate-list';
+    const method = currentEditingList ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            closeModal();
+            loadUserLists(); // Refresh the lists
+            showSuccess(currentEditingList ? 'List updated successfully!' : 'List created successfully!');
+        } else {
+            showError(result.error);
+        }
+    })
+    .catch(error => {
+        showError('Error: ' + error.message);
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = currentEditingList ? 'Update List' : 'Create List';
+    });
+}
+
+function deleteList(listName) {
+    if (!confirm(`Are you sure you want to delete "${listName}"? This action cannot be undone.`)) {
+        return;
+    }
+    
+    fetch(`/api/lists/${encodeURIComponent(listName)}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            loadUserLists(); // Refresh the lists
+            showSuccess('List deleted successfully!');
+        } else {
+            showError(result.error);
+        }
+    })
+    .catch(error => {
+        showError('Error deleting list: ' + error.message);
+    });
+}
+
+function showSuccess(message) {
+    // You can implement a toast notification here
+    alert(message);
+}
+
+function showError(message) {
+    // You can implement a toast notification here
+    alert('Error: ' + message);
+}
+</script>
+{% endblock %}

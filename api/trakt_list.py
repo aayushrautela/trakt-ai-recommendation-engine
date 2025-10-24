@@ -334,6 +334,59 @@ class TraktListManager:
             print(f"❌ Failed to store config: {e}", file=sys.stderr)
             return False
     
+    def store_list_config(self, username: str, list_name: str, config: Dict) -> bool:
+        """Store configuration for a specific list"""
+        try:
+            list_key = f'{self.namespace}:list_config:{username}:{list_name}'
+            self.redis_client.setex(list_key, 86400 * 30, json.dumps(config))  # 30 days expiry
+            return True
+        except Exception as e:
+            print(f"❌ Failed to store list config: {e}", file=sys.stderr)
+            return False
+    
+    def get_list_config(self, username: str, list_name: str) -> Optional[Dict]:
+        """Get configuration for a specific list"""
+        try:
+            list_key = f'{self.namespace}:list_config:{username}:{list_name}'
+            config_data = self.redis_client.get(list_key)
+            if config_data:
+                return json.loads(config_data)
+        except Exception as e:
+            print(f"❌ Failed to get list config: {e}", file=sys.stderr)
+        return None
+    
+    def get_all_user_lists(self, username: str) -> List[Dict]:
+        """Get all lists for a user"""
+        try:
+            lists = []
+            pattern = f'{self.namespace}:list_config:{username}:*'
+            
+            for key in self.redis_client.scan_iter(match=pattern):
+                list_name = key.replace(f'{self.namespace}:list_config:{username}:', '')
+                config_data = self.redis_client.get(key)
+                if config_data:
+                    config = json.loads(config_data)
+                    lists.append({
+                        'name': list_name,
+                        'config': config,
+                        'list_url': f"https://trakt.tv/users/{username}/lists/{list_name.replace(' ', '-').lower()}"
+                    })
+            
+            return lists
+        except Exception as e:
+            print(f"❌ Failed to get user lists: {e}", file=sys.stderr)
+            return []
+    
+    def delete_list_config(self, username: str, list_name: str) -> bool:
+        """Delete configuration for a specific list"""
+        try:
+            list_key = f'{self.namespace}:list_config:{username}:{list_name}'
+            self.redis_client.delete(list_key)
+            return True
+        except Exception as e:
+            print(f"❌ Failed to delete list config: {e}", file=sys.stderr)
+            return False
+    
     def get_user_config(self, username: str) -> Optional[Dict]:
         """Get user configuration from Redis"""
         try:
