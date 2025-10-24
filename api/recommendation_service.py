@@ -28,7 +28,8 @@ class RecommendationService:
         time_period: str, 
         selected_genres: List[str] = None,
         target_count: int = 20,
-        max_retries: int = 3
+        max_retries: int = 3,
+        min_quality_score: float = 5.0
     ) -> Tuple[List[Dict], Dict]:
         """
         Generate movie recommendations with sophisticated retry logic.
@@ -39,6 +40,7 @@ class RecommendationService:
             selected_genres: Optional list of genres to filter by
             target_count: Target number of recommendations (default: 20)
             max_retries: Maximum number of retry attempts (default: 3)
+            min_quality_score: Minimum quality score threshold (default: 5.0)
             
         Returns:
             Tuple of (enriched_movies, metadata)
@@ -47,6 +49,7 @@ class RecommendationService:
                 'total_generated': int,
                 'total_filtered_watched': int,
                 'total_filtered_duplicates': int,
+                'total_filtered_quality': int,
                 'success': bool
             }
         """
@@ -76,6 +79,7 @@ class RecommendationService:
             'total_generated': 0,
             'total_filtered_watched': 0,
             'total_filtered_duplicates': 0,
+            'total_filtered_quality': 0,
             'success': False
         }
         
@@ -101,7 +105,7 @@ class RecommendationService:
             
             # Enrich and filter recommendations
             new_enriched_movies = self._enrich_and_filter_recommendations(
-                recommendations, selected_genres, watched_movie_ids, used_movie_ids
+                recommendations, selected_genres, watched_movie_ids, used_movie_ids, min_quality_score
             )
             
             if new_enriched_movies:
@@ -142,16 +146,18 @@ class RecommendationService:
         recommendations: List[str], 
         selected_genres: List[str], 
         watched_movie_ids: set,
-        used_movie_ids: set
+        used_movie_ids: set,
+        min_quality_score: float = 5.0
     ) -> List[Dict]:
         """
-        Enrich recommendations with TMDB data and filter out watched/duplicate movies.
+        Enrich recommendations with TMDB data and filter out watched/duplicate/low-quality movies.
         
         This is a critical method that handles the sophisticated filtering logic.
         """
         enriched_movies = []
         filtered_out_watched = 0
         filtered_out_duplicates = 0
+        filtered_out_quality = 0
         
         for title in recommendations:
             # Try to extract year from title if present
@@ -181,16 +187,20 @@ class RecommendationService:
                 filtered_out_duplicates += 1
                 continue
             
+            # Filter out low-quality movies
+            quality_score = self._calculate_quality_score(movie_data)
+            if quality_score < min_quality_score:
+                filtered_out_quality += 1
+                continue
+            
             enriched_movies.append(movie_data)
         
         # Apply genre filtering if specified
         if selected_genres:
             enriched_movies = self.tmdb_client.filter_movies_by_genres(enriched_movies, selected_genres)
         
-        # Sort by popularity
-        enriched_movies.sort(key=lambda x: x.get('popularity', 0), reverse=True)
-        
-        logger.info(f"Enriched {len(enriched_movies)} movies. Filtered out {filtered_out_watched} watched, {filtered_out_duplicates} duplicates")
+        # No sorting - keep diversity by returning movies in order they were found
+        logger.info(f"Enriched {len(enriched_movies)} movies. Filtered out {filtered_out_watched} watched, {filtered_out_duplicates} duplicates, {filtered_out_quality} low-quality")
         
         return enriched_movies
     
@@ -218,6 +228,28 @@ class RecommendationService:
                 current_history.append(fake_history_item)
         
         logger.info(f"Added {len(recommendations)} fake history items to prevent re-suggestion")
+    
+    def _calculate_quality_score(self, movie: Dict) -> float:
+        """
+        Calculate a quality score to filter out bad movies.
+        
+        Uses weighted scoring based on:
+        - 40% popularity (indicates mainstream appeal)
+        - 40% vote average (quality rating)
+        - 20% vote count credibility (more votes = more reliable)
+        """
+        popularity = movie.get('popularity', 0)
+        vote_average = movie.get('vote_average', 0)
+        vote_count = movie.get('vote_count', 0)
+        
+        # Weighted quality score
+        quality_score = (
+            popularity * 0.4 +           # 40% popularity
+            vote_average * 10 * 0.4 +    # 40% quality (TMDB rating out of 10)
+            min(vote_count / 1000, 1) * 0.2  # 20% credibility (more votes = more reliable)
+        )
+        
+        return quality_score
     
     def generate_fallback_recommendations(self, selected_genres: List[str] = None) -> List[Dict]:
         """
@@ -249,4 +281,11 @@ class RecommendationService:
         # Enrich fallback recommendations
         enriched_movies = self.tmdb_client.enrich_movie_list(fallback_movies, selected_genres)
         
-        return enriched_movies[:20]  # Return top 20
+        # Apply quality filtering to fallback recommendations too
+        quality_movies = []
+        for movie in enriched_movies:
+            quality_score = self._calculate_quality_score(movie)
+            if quality_score >= 5.0:  # Same quality threshold
+                quality_movies.append(movie)
+        
+        return quality_movies[:20]  # Return up to 20 quality movies

@@ -159,8 +159,7 @@ class TMDBClient:
         if selected_genres:
             enriched_movies = self.filter_movies_by_genres(enriched_movies, selected_genres)
         
-        # Sort by popularity and return top 20
-        enriched_movies.sort(key=lambda x: x.get('popularity', 0), reverse=True)
+        # Return movies without sorting for diversity
         final_movies = enriched_movies[:20]
         
         # DEBUG: Log final results
