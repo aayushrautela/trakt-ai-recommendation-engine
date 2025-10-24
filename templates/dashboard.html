@@ -2,10 +2,14 @@
 
 {% block content %}
 <div class="dashboard">
-    <div class="header">
-        <h1>My AI Movie Lists</h1>
-        <p>Manage your personalized movie recommendation lists</p>
-        <button id="createListBtn" class="btn btn-primary">Create New List</button>
+    <div class="dashboard-header">
+        <div class="header-content">
+            <h1>My AI Movie Lists</h1>
+            <p>Manage your personalized movie recommendation lists</p>
+        </div>
+        <button id="createListBtn" class="btn btn-primary">
+            <span>+</span> Create New List
+        </button>
     </div>
     
     <div id="listsContainer" class="lists-container">
@@ -16,80 +20,82 @@
     </div>
     
     <!-- Create/Edit List Modal -->
-    <div id="listModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">Create New List</h2>
-                <span class="close">&times;</span>
-            </div>
-            <div class="modal-body">
-                <form id="listForm">
-                    <div class="form-group">
-                        <label for="list_name">List Name:</label>
-                        <input type="text" id="list_name" name="list_name" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="time_period">Time Period:</label>
-                        <select id="time_period" name="time_period" required>
-                            <option value="1 day">Last 1 day</option>
-                            <option value="1 week" selected>Last 1 week</option>
-                            <option value="1 month">Last 1 month</option>
-                            <option value="3 months">Last 3 months</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="genres">Genres (optional):</label>
-                        <div class="checkbox-group">
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="action" name="genres" value="action">
-                                <label for="action">Action</label>
-                            </div>
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="adventure" name="genres" value="adventure">
-                                <label for="adventure">Adventure</label>
-                            </div>
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="comedy" name="genres" value="comedy">
-                                <label for="comedy">Comedy</label>
-                            </div>
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="drama" name="genres" value="drama">
-                                <label for="drama">Drama</label>
-                            </div>
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="horror" name="genres" value="horror">
-                                <label for="horror">Horror</label>
-                            </div>
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="romance" name="genres" value="romance">
-                                <label for="romance">Romance</label>
-                            </div>
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="thriller" name="genres" value="thriller">
-                                <label for="thriller">Thriller</label>
-                            </div>
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="science fiction" name="genres" value="science fiction">
-                                <label for="science fiction">Sci-Fi</label>
-                            </div>
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="fantasy" name="genres" value="fantasy">
-                                <label for="fantasy">Fantasy</label>
-                            </div>
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="animation" name="genres" value="animation">
-                                <label for="animation">Animation</label>
+    <div id="listModal" class="modal-overlay" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modalTitle">Create New List</h2>
+                    <button class="modal-close" id="closeModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="listForm">
+                        <div class="form-group">
+                            <label for="list_name">List Name</label>
+                            <input type="text" id="list_name" name="list_name" placeholder="e.g., Weekend Movies" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="time_period">Time Period</label>
+                            <select id="time_period" name="time_period" required>
+                                <option value="1 day">Last 1 day</option>
+                                <option value="1 week" selected>Last 1 week</option>
+                                <option value="1 month">Last 1 month</option>
+                                <option value="3 months">Last 3 months</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="genres">Genres (optional)</label>
+                            <div class="checkbox-grid">
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="action" name="genres" value="action">
+                                    <label for="action">Action</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="adventure" name="genres" value="adventure">
+                                    <label for="adventure">Adventure</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="comedy" name="genres" value="comedy">
+                                    <label for="comedy">Comedy</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="drama" name="genres" value="drama">
+                                    <label for="drama">Drama</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="horror" name="genres" value="horror">
+                                    <label for="horror">Horror</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="romance" name="genres" value="romance">
+                                    <label for="romance">Romance</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="thriller" name="genres" value="thriller">
+                                    <label for="thriller">Thriller</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="science fiction" name="genres" value="science fiction">
+                                    <label for="science fiction">Sci-Fi</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="fantasy" name="genres" value="fantasy">
+                                    <label for="fantasy">Fantasy</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="animation" name="genres" value="animation">
+                                    <label for="animation">Animation</label>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="form-actions">
-                        <button type="submit" class="btn btn-primary" id="submitBtn">Create List</button>
-                        <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
-                    </div>
-                </form>
+                        
+                        <div class="modal-actions">
+                            <button type="button" id="cancelBtn" class="btn btn-secondary">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Create List</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
@@ -104,7 +110,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Modal event listeners
     document.getElementById('createListBtn').addEventListener('click', openCreateModal);
-    document.querySelector('.close').addEventListener('click', closeModal);
+    document.getElementById('closeModal').addEventListener('click', closeModal);
     document.getElementById('cancelBtn').addEventListener('click', closeModal);
     document.getElementById('listForm').addEventListener('submit', handleFormSubmit);
     
@@ -171,8 +177,7 @@ function openCreateModal() {
     currentEditingList = null;
     document.getElementById('modalTitle').textContent = 'Create New List';
     document.getElementById('listForm').reset();
-    document.getElementById('submitBtn').textContent = 'Create List';
-    document.getElementById('listModal').style.display = 'block';
+    document.getElementById('listModal').style.display = 'flex';
 }
 
 function editList(listName) {
@@ -193,7 +198,7 @@ function editList(listName) {
                     checkbox.checked = data.config.genres.includes(checkbox.value);
                 });
                 
-                document.getElementById('listModal').style.display = 'block';
+                document.getElementById('listModal').style.display = 'flex';
             } else {
                 showError('Failed to load list details: ' + data.error);
             }
