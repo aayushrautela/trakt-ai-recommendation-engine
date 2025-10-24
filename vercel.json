@@ -3,7 +3,10 @@
   "builds": [
     {
       "src": "api/index.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python",
+      "config": {
+        "maxDuration": 300
+      }
     }
   ],
   "routes": [
@@ -21,10 +24,5 @@
       "path": "/api/update-lists",
       "schedule": "0 2 * * *"
     }
-  ],
-  "functions": {
-    "api/index.py": {
-      "maxDuration": 300
-    }
-  }
+  ]
 }
