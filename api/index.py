@@ -317,6 +317,66 @@ def delete_list(list_name):
             "error": "An unexpected error occurred. Please try again."
         }), 500
 
+@app.route('/api/cache/refresh', methods=['POST'])
+def refresh_cache():
+    """Manually refresh user's history cache"""
+    if 'username' not in session:
+        return jsonify({"success": False, "error": "Not authenticated"}), 401
+    
+    try:
+        username = session['username']
+        
+        # Update history cache incrementally
+        success = history_fetcher.update_history_incrementally(username)
+        
+        if success:
+            return jsonify({
+                "success": True,
+                "message": "History cache refreshed successfully"
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Failed to refresh cache"
+            }), 500
+            
+    except Exception as e:
+        print(f"ERROR: Unexpected error refreshing cache: {e}", file=sys.stderr)
+        return jsonify({
+            "success": False,
+            "error": "An unexpected error occurred. Please try again."
+        }), 500
+
+@app.route('/api/cache/clear', methods=['POST'])
+def clear_cache():
+    """Clear user's history cache"""
+    if 'username' not in session:
+        return jsonify({"success": False, "error": "Not authenticated"}), 401
+    
+    try:
+        username = session['username']
+        
+        # Clear history cache
+        success = list_manager.clear_user_history_cache(username)
+        
+        if success:
+            return jsonify({
+                "success": True,
+                "message": "History cache cleared successfully"
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Failed to clear cache"
+            }), 500
+            
+    except Exception as e:
+        print(f"ERROR: Unexpected error clearing cache: {e}", file=sys.stderr)
+        return jsonify({
+            "success": False,
+            "error": "An unexpected error occurred. Please try again."
+        }), 500
+
 @app.errorhandler(404)
 def not_found(error):
     return render_template('index.html'), 404

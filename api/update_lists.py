@@ -41,7 +41,7 @@ class ListUpdater:
             try:
                 logger.info(f"Updating list '{list_name}' for user: {username}")
                 
-                # Update single list
+                # Update single list (history cache will be updated automatically during generation)
                 success = self.update_user_list(username, config)
                 
                 if success:

@@ -66,7 +66,7 @@ class RecommendationService:
                 'error': f"No watch history found for {time_period}"
             }
         
-        complete_history = self.history_fetcher.fetch_complete_watch_history(username)
+        complete_history = self.history_fetcher.get_complete_cached_history(username)
         watched_movie_ids = self.history_fetcher.get_watched_movie_ids(complete_history)
         
         # Initialize tracking variables
