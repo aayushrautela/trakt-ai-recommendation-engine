@@ -94,19 +94,22 @@ def generate_list():
         selected_genres = data.get('genres', [])
         list_name = data.get('list_name', 'AI Recommendations')
         
-        # Fetch watch history
-        history = history_fetcher.get_filtered_history(username, time_period)
+        # Fetch watch history for AI analysis (time-period limited)
+        analysis_history = history_fetcher.get_filtered_history(username, time_period)
         
-        if not history:
+        if not analysis_history:
             return jsonify({
                 "success": False, 
                 "error": f"No watch history found for the selected time period ({time_period}). Please watch some movies first!"
             }), 400
         
+        # Fetch complete watch history for filtering (no date limit)
+        complete_history = history_fetcher.fetch_complete_watch_history(username)
+        
         # Generate AI recommendations with aggressive retry logic to get 20 movies
         all_enriched_movies = []
         max_retries = 3
-        current_history = history.copy()  # Start with original history
+        current_history = analysis_history.copy()  # Start with time-period limited history for AI
         used_movie_ids = set()  # Track used movie IDs to prevent duplicates
         
         for attempt in range(max_retries):
@@ -123,8 +126,8 @@ def generate_list():
                     }), 500
                 continue
             
-            # Get watched movie IDs to filter out
-            watched_movie_ids = history_fetcher.get_watched_movie_ids(history)
+            # Get watched movie IDs to filter out (from COMPLETE history)
+            watched_movie_ids = history_fetcher.get_watched_movie_ids(complete_history)
             
             # Enrich with TMDB data and filter out watched movies
             new_enriched_movies = tmdb_client.enrich_movie_list(recommendations, selected_genres, watched_movie_ids)
@@ -144,7 +147,7 @@ def generate_list():
                 break
             else:
                 if attempt < max_retries - 1:
-                    # Add ALL Gemini recommendations to history so it won't suggest them again
+                    # Add ALL Gemini recommendations to analysis history so it won't suggest them again
                     for recommendation in recommendations:
                         # Parse the recommendation to extract title and year
                         if '(' in recommendation and ')' in recommendation:

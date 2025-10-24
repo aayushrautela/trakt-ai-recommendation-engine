@@ -60,6 +60,44 @@ class HistoryFetcher:
         # Fetched movies from history
         return all_history
     
+    def fetch_complete_watch_history(self, username: str) -> List[Dict]:
+        """Fetch user's complete movie watch history (no date filtering) for filtering purposes"""
+        
+        # Fetch movie history with pagination (no start_date filter)
+        all_history = []
+        page = 1
+        limit = 100
+        
+        while True:
+            endpoint = f'/users/{username}/history/movies'
+            params = f'?page={page}&limit={limit}'
+            
+            history_data = self.trakt_auth.make_authenticated_request(
+                username, 
+                f'{endpoint}{params}'
+            )
+            
+            if not history_data:
+                break
+            
+            if not history_data:  # Empty response
+                break
+            
+            all_history.extend(history_data)
+            
+            # If we got fewer items than the limit, we've reached the end
+            if len(history_data) < limit:
+                break
+            
+            page += 1
+            
+            # Safety check to prevent infinite loops
+            if page > 50:  # Max 5000 items
+                break
+        
+        # Fetched movies from complete history
+        return all_history
+    
     def extract_movie_info(self, history_item: Dict) -> Dict:
         """Extract relevant movie information from history item"""
         movie_data = history_item.get('movie', {})

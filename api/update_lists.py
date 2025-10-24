@@ -67,25 +67,28 @@ class ListUpdater:
             
             logger.info(f"Processing {username}: {time_period}, genres: {selected_genres}")
             
-            # Fetch watch history
-            history = self.history_fetcher.get_filtered_history(username, time_period)
+            # Fetch watch history for AI analysis (time-period limited)
+            analysis_history = self.history_fetcher.get_filtered_history(username, time_period)
             
-            if not history:
+            if not analysis_history:
                 logger.warning(f"No watch history found for {username} in {time_period}")
                 # Still create a list with general recommendations
                 recommendations = self._get_fallback_recommendations(selected_genres)
             else:
                 # Generate AI recommendations
                 recommendations = self.recommendation_engine.analyze_watch_history(
-                    history, time_period, selected_genres
+                    analysis_history, time_period, selected_genres
                 )
             
             if not recommendations:
                 logger.warning(f"No recommendations generated for {username}")
                 return False
             
-            # Get watched movie IDs to filter out
-            watched_movie_ids = self.history_fetcher.get_watched_movie_ids(history)
+            # Fetch complete watch history for filtering (no date limit)
+            complete_history = self.history_fetcher.fetch_complete_watch_history(username)
+            
+            # Get watched movie IDs to filter out (from COMPLETE history)
+            watched_movie_ids = self.history_fetcher.get_watched_movie_ids(complete_history)
             
             # Enrich with TMDB data and filter out watched movies
             enriched_movies = self.tmdb_client.enrich_movie_list(recommendations, selected_genres, watched_movie_ids)
